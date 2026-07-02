@@ -73,4 +73,13 @@ Started 2026-07-02, right after the bash rollout finished. Vincent wants the sam
 - The `onyx` ditto-data-loss bug (see CRITICAL finding above) is the single most important behavior to preserve in the port: the pipeline must diff git dirty-count before/after and specifically flag `D ` (deleted) entries as a first-class `.critical` result, not a generic warning — that's literally how the bash script caught it, and the Swift port must not regress on this.
 - Test strategy for the `onyx` case without touching real projects: a `DirectoryCopying` protocol behind `DittoCopier`, with a `FaultInjectingCopier` test double that reproduces "file count matches but a tracked file was silently dropped" on a real local git fixture repo (`git init`/`commit` via `Process`, not mocked) under `FileManager.default.temporaryDirectory`.
 
-**Progress**: Phase 0 (scaffolding) done 2026-07-02 — `project.yml`, target skeletons, `Scripts/{fetch-sparkle-tools,build,release}.sh`, `git init`, Debug build + Swift Testing smoke test both green. Next: Phase 1 (Core logic + tests), must be 100% green before any UI work starts. Full phase breakdown in `PLAN.md`.
+**Progress**: Phase 0 (scaffolding) done 2026-07-02 — `project.yml`, target skeletons, `Scripts/{fetch-sparkle-tools,build,release}.sh`, `git init`, Debug build + Swift Testing smoke test both green.
+
+**Phase 1 (Core logic + tests) done 2026-07-02** — full `MoveAppsCore` implementation (25 Swift files) + 9 test files, 17 tests / 8 suites, independently re-verified green (build + test rerun outside the implementing agent). The `onyx` reproduction test passes: a fault-injected copier drops a tracked file while keeping the file count equal, and the pipeline correctly escalates to `.critical` with the source preserved.
+
+Two implementation-level findings worth remembering for future Swift work in this repo:
+- `Process.waitUntilExit()` can hang intermittently under Swift 6 strict concurrency (races with concurrent pipe reads via its private `CFRunLoop`) — use `terminationHandler` + `DispatchGroup` instead, as `ProcessRunner` now does.
+- `FileManager` is not `Sendable`; expose it as a computed `.default` property in `actor`/`Sendable` types rather than storing an injected instance, to avoid `@unchecked Sendable`.
+- Deliberate deviation from `move-app.sh`: `TransferPipeline` defers source deletion on the copy/ditto fallback path until *after* the post-move git snapshot is compared — the bash script deleted first. This is what makes the `onyx`-style bug provably non-destructive in the Swift port (native rename is atomic and still deletes immediately, since there's no partial-copy risk to guard against).
+
+Next: Phase 2 (menu bar UI). Full phase breakdown in `PLAN.md`.

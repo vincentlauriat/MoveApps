@@ -49,8 +49,8 @@
 ## MoveApps.app (SwiftUI native) — in progress
 - [x] Plan approved (`~/.claude/plans/zesty-discovering-alpaca.md`) — menu bar + main window, native Swift reimplementation, bidirectional, private GitHub repo
 - [x] Phase 0 — XcodeGen scaffolding, `git init`, Scripts, doc sync. Debug build + smoke test green.
-- [ ] Create the private GitHub remote (`vincentlauriat/MoveApps`) and push the first commit
-- [ ] Phase 1 — Core logic (`MoveAppsCore`) + Swift Testing suite, including the `onyx` ditto-data-loss fault-injection test — must be 100% green before UI work starts
+- [ ] **Action requise de Vincent** : `gh repo create` a été bloqué par le garde-fou de sécurité (création de repo = geste humain explicite requis). Créer le repo privé `vincentlauriat/MoveApps` sur github.com/new, puis redonner la main pour `git remote add origin` + `git push`.
+- [x] Phase 1 — Core logic (`MoveAppsCore`) + Swift Testing suite, including the `onyx` ditto-data-loss fault-injection test (17 tests / 8 suites, independently re-verified green)
 - [ ] Phase 2 — Menu bar UI (`MenuBarExtra`, Settings with root pickers + login item)
 - [ ] Phase 3 — Main window UI (two-column view, transfer plan/progress, history, drag & drop)
 - [ ] Phase 4 — `Scripts/release.sh` full pipeline (codesign/notarize/DMG), manual multi-Mac distribution for v1 (no Sparkle feed yet — private repo)

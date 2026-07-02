@@ -20,8 +20,8 @@ Full plan detail: `~/.claude/plans/zesty-discovering-alpaca.md` (context, archit
 ### Phase 0 — Scaffolding (done, 2026-07-02)
 XcodeGen `project.yml`, target skeletons (`MoveAppsCore`/`MoveAppsUI`/`MoveApps`/`MoveAppsCoreTests`), `Scripts/{fetch-sparkle-tools,build,release}.sh`, `git init`, doc sync. Debug build + smoke test green.
 
-### Phase 1 — Core logic + tests (next)
-Port `move-app.sh`'s logic natively to `MoveAppsCore` (`StackDetector`, `ICloudMaterializer`, `VenvManager`, `GitService`, `DirectoryMover`/`DirectoryCopying`, `NodeModulesInstaller`, `SymlinkVerifier`, `ResidualPathScanner`, `TransferPipeline` actor + `AsyncStream<TransferStep>`, `TransferHistoryStore`, `RootPathsSettings`). Swift Testing suite per service, including a fault-injection reproduction of the `onyx` `ditto` data-loss bug (must yield `.critical` + source not deleted). Must be 100% green before Phase 2.
+### Phase 1 — Core logic + tests (done, 2026-07-02)
+Ported `move-app.sh`'s logic natively to `MoveAppsCore` (`StackDetector`, `ICloudMaterializer`, `VenvManager`, `GitService`, `DirectoryMover`/`DirectoryCopying`, `NodeModulesInstaller`, `SymlinkVerifier`, `ResidualPathScanner`, `TransferPipeline` actor + `AsyncStream<TransferStep>`, `TransferHistoryStore`, `RootPathsSettings`). 17 tests / 8 suites, all green (independently re-verified), including the `onyx` fault-injection reproduction (`.critical` + source preserved). See MEMORY.md for implementation-level findings (`Process.waitUntilExit()` hang risk, deferred-deletion safety decision).
 
 ### Phase 2 — UI menu bar
 `MoveAppsApp.swift` (3 Scenes), `MenuBarQuickPickView`, `SettingsView` (root pickers via `NSOpenPanel` + security-scoped bookmarks, login item toggle).

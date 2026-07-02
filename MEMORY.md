@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-02 (Phase 3)
+last_updated: 2026-07-03 (Phase 4)
 ---
 
 # Project Memory — MoveApps
@@ -96,4 +96,20 @@ New files under `Sources/MoveAppsUI/MainWindow/` (replacing `MainWindowPlacehold
 
 `MoveAppsApp.swift` now builds `MainWindowViewModel` in `@State` and injects it into `Window("MoveApps", id: "main")`, which renders `MainWindowView()`. `MenuBarExtra`/`Settings` scenes untouched.
 
-Next: Phase 4 (packaging: codesign/notarize/DMG via `Scripts/release.sh`, manual multi-Mac distribution). Full phase breakdown in `PLAN.md`. Still pending from Phase 2: Vincent's interactive click-through of the menu bar UI — not yet done, worth doing before Phase 4 packaging effort.
+**Phase 3 committed 2026-07-03** on branch `feature/phase3-main-window` (commit `4cd5041`, "feat: build main window UI (Phase 3)") — still not merged to `main`, Vincent chose to keep building rather than pause for git housekeeping.
+
+**Phase 4 (packaging) started 2026-07-03**, same branch. `Scripts/release.sh` (a full codesign/notarize/DMG pipeline) already existed from the Phase 0 scaffolding and turned out to be essentially complete — this phase was mostly about closing small gaps and *proving the pipeline actually works*, not writing it from scratch:
+- Added `LSApplicationCategoryType` (`public.app-category.developer-tools`) and `NSHumanReadableCopyright` to `project.yml`'s `info.properties` for the `MoveApps` target. Important gotcha found: XcodeGen treats `project.yml`'s `info.properties` as the source of truth and regenerates `Sources/MoveApps/Info.plist` from it on every `xcodegen generate` — editing the `.plist` file directly gets silently clobbered on the next generate. Always edit `project.yml`, not the plist.
+- `Sources/MoveApps/MoveApps.entitlements` is an empty `<dict/>` and was judged **correct as-is**, not a gap: the app is deliberately non-sandboxed (it shells out to `git`/`ditto` via `Process`, which the sandbox forbids) and requests no special hardened-runtime capability (no JIT, no unsigned memory, no library-validation exception needed since all embedded frameworks — including `Sparkle.framework` — are signed with the same Developer ID identity as the app). Empty entitlements + Hardened Runtime enabled at the codesign step is a standard, valid combination for this shape of app.
+- `Scripts/release.sh` gained a `SKIP_NOTARIZE=1` env-var mode: runs the full build→codesign→DMG pipeline and stops before `xcrun notarytool submit`, so the pipeline can be validated without the notarization credentials being set up yet.
+- **Ran the dry-run pipeline for real** (`SKIP_NOTARIZE=1 ./Scripts/release.sh 0.1.0`): Release build succeeded, every nested binary (Sparkle's `Autoupdate`/XPC services/`Updater.app`, both frameworks, the app itself) signed with the real `Developer ID Application: Vincent LAURIAT (KFLACS69T9)` identity — already present in the login keychain from prior work (same identity pattern as `NetCheck`/`WifiManager`), **no keychain UI prompt was needed**, so this pipeline can run non-interactively. Hardened Runtime confirmed on (`flags=0x10000(runtime)` in `codesign -dv` output). DMG produced (1.3M) and independently re-verified (not just trusting the script's own success message): mounted it, ran `codesign --verify --deep --strict` (valid on disk) and `spctl -a -t exec` (accepted, source=Developer ID) directly against the mounted `.app`.
+- **AppIcon deferred by design, not a blocker**: `Assets.xcassets/AppIcon.appiconset` has all 10 required slots declared in `Contents.json` but zero actual image files — a placeholder. This does not fail the build (`actool` just produces an icon-less app), so v1 can ship without custom artwork; treated as cosmetic polish, not in scope unless Vincent wants to prioritize it.
+- Sparkle.framework is embedded and gets signed but has **zero code wiring** (`grep` for `Sparkle`/`SPUStandardUpdater` in `Sources/` returns nothing, no `SUPublicEDKey`/`SUFeedURL` anywhere) — consistent with the existing decision (no auto-update feed for v1, private repo). It's dead weight in the bundle for now, harmless.
+
+**Remaining real blocker for Phase 4 — needs Vincent, not automatable**: notarization. `xcrun notarytool history --keychain-profile "MoveApps-Notary"` confirms no credentials are stored. Vincent must run, once, in his own interactive terminal (needs his real Apple ID + a freshly generated app-specific password from appleid.apple.com — not something that can be scripted or done on his behalf):
+```
+xcrun notarytool store-credentials "MoveApps-Notary" --apple-id "vincent@lauriat.fr" --team-id "KFLACS69T9"
+```
+After that one-time setup, `./Scripts/release.sh 0.1.0` (no env var) produces a fully signed, notarized, stapled, distributable DMG. Suggest he run it himself via `! ./Scripts/release.sh 0.1.0` so he can see/approve any keychain prompt interactively, even though the dry run above suggests none should appear.
+
+Next: once notarization is unblocked, validate the full (non-skip) release, then Phase 5 (cross-validation vs `move-app.sh`, first DevApps→GitHub round trip). Still pending from Phase 2: Vincent's interactive click-through of the menu bar UI — not yet done.

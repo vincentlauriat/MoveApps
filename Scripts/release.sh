@@ -16,6 +16,10 @@
 #   SIGNING_IDENTITY="Developer ID Application: …"  ./Scripts/release.sh 0.1.0
 #   NOTARY_PROFILE="MoveApps-Notary"                ./Scripts/release.sh 0.1.0
 #
+# Local dry run (build + sign + DMG, no notarization — e.g. before the
+# "MoveApps-Notary" keychain profile has been set up, see prerequisites above):
+#   SKIP_NOTARIZE=1 ./Scripts/release.sh 0.1.0
+#
 # v1 note: repo GitHub privé, pas de feed Sparkle réseau (voir MEMORY.md /
 # ARCHITECTURE.md). Ce script signe et notarise le DMG mais ne génère PAS
 # appcast.xml — distribution manuelle entre les Macs de Vincent pour l'instant.
@@ -116,7 +120,16 @@ hdiutil create -volname "MoveApps $VERSION" -srcfolder "$STAGING" \
 
 rm -rf "$STAGING_DIR"
 
-# 5. Notarize the DMG with Apple, then staple the ticket.
+# 5. Notarize the DMG with Apple, then staple the ticket — unless SKIP_NOTARIZE=1.
+if [ "${SKIP_NOTARIZE:-0}" = "1" ]; then
+  DMG_SIZE=$(ls -lh "$DMG" | awk '{print $5}')
+  echo ""
+  echo "⚠️  SKIP_NOTARIZE=1 : DMG signé mais NON notarisé, non stapled: $DMG ($DMG_SIZE)"
+  echo "   Gatekeeper bloquera son ouverture sur une autre machine tant qu'il n'est pas notarisé."
+  echo "   Relance sans SKIP_NOTARIZE une fois le profil \"$NOTARY_PROFILE\" en place pour un DMG distribuable."
+  exit 0
+fi
+
 echo "→ Submitting $DMG to Apple notary service (this takes 2–5 min)"
 xcrun notarytool submit "$DMG" \
   --keychain-profile "$NOTARY_PROFILE" \

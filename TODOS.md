@@ -56,7 +56,12 @@
 - [x] Repo privé `vincentlauriat/MoveApps` créé sur GitHub, `origin` configuré, `main` poussée (3 commits) — https://github.com/vincentlauriat/MoveApps
 - [x] Phase 1 — Core logic (`MoveAppsCore`) + Swift Testing suite, including the `onyx` ditto-data-loss fault-injection test (17 tests / 8 suites, independently re-verified green)
 - [x] Phase 2 — Menu bar UI (`MenuBarExtra`, Settings with root pickers + login item) — build green, tests untouched, **needs Vincent's interactive click-through** (agent had no screen/Accessibility access to verify visually)
-- [x] Phase 3 — Main window UI (two-column view, transfer plan/progress, history, drag & drop) — on branch `feature/phase3-main-window`, build + 17/17 tests independently re-verified, **not yet committed/pushed** (Vincent asked to defer, kept working on the app)
-- [ ] Phase 4 — `Scripts/release.sh` full pipeline (codesign/notarize/DMG), manual multi-Mac distribution for v1 (no Sparkle feed yet — private repo)
+- [x] Phase 3 — Main window UI (two-column view, transfer plan/progress, history, drag & drop) — committed on `feature/phase3-main-window` (`4cd5041`), not yet merged to `main`/pushed
+- [ ] Phase 4 — `Scripts/release.sh` full pipeline (codesign/notarize/DMG). Build+codesign+DMG steps validated end-to-end via `SKIP_NOTARIZE=1` dry run (2026-07-03), independently re-verified (`codesign --verify --deep --strict`, `spctl -a -t exec` both pass). **Blocked on notarization credentials — action requise de Vincent** :
+  ```
+  xcrun notarytool store-credentials "MoveApps-Notary" --apple-id "vincent@lauriat.fr" --team-id "KFLACS69T9"
+  ```
+  Nécessite un mot de passe app-specific généré sur appleid.apple.com — geste manuel, impossible à scripter. Une fois fait, `./Scripts/release.sh 0.1.0` (sans `SKIP_NOTARIZE`) produit un DMG signé + notarisé + stapled, prêt à distribuer.
+- [ ] Optionnel, non bloquant : AppIcon réel (`Assets.xcassets/AppIcon.appiconset` n'a que des slots vides) — l'app buildera et se notarisera sans, juste sans icône personnalisée
 - [ ] Phase 5 — Cross-validation vs `move-app.sh`: `--list`/`--dry-run` comparison, and the first-ever real DevApps→GitHub→DevApps round trip (reverse direction has zero prod mileage)
 - [ ] Later (not blocking v1): private Sparkle feed for auto-update (GitHub Releases + PAT, or similar) once the app is stable

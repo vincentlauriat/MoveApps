@@ -73,6 +73,8 @@ targets:
         CFBundleVersion: "1"
         LSMinimumSystemVersion: "26.0"
         LSUIElement: false
+        LSApplicationCategoryType: public.app-category.developer-tools
+        NSHumanReadableCopyright: "© 2026 Vincent Lauriat"
         NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
         NSSupportsAutomaticGraphicsSwitching: true

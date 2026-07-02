@@ -46,13 +46,17 @@
 - [ ] Not yet exercised in practice: the `.icloud` stub-file materialization path (no stub files existed at last scan) — worth watching the first time it actually triggers, though now moot since the rollout is done
 - [ ] Optional: clean up the 3 leftover non-project files in `~/Documents/Github` (`CLAUDE.md`, `CommitTousLesDossiers.sh`, `MetsAJourLesGIT.sh`) if that folder should be fully retired
 
+## MoveApps.app — housekeeping (not urgent)
+- [ ] Commit + push the Phase 3 work on `feature/phase3-main-window` and merge to `main` when Vincent is ready (deliberately left uncommitted per his instruction to keep moving on the app first)
+- [ ] Update doc files' commit itself is also pending (`COMMANDS.md`/`TODOS.md` edits from the repo-creation step are still uncommitted on `main`)
+
 ## MoveApps.app (SwiftUI native) — in progress
 - [x] Plan approved (`~/.claude/plans/zesty-discovering-alpaca.md`) — menu bar + main window, native Swift reimplementation, bidirectional, private GitHub repo
 - [x] Phase 0 — XcodeGen scaffolding, `git init`, Scripts, doc sync. Debug build + smoke test green.
-- [ ] **Action requise de Vincent** : `gh repo create` a été bloqué par le garde-fou de sécurité (création de repo = geste humain explicite requis). Créer le repo privé `vincentlauriat/MoveApps` sur github.com/new, puis redonner la main pour `git remote add origin` + `git push`.
+- [x] Repo privé `vincentlauriat/MoveApps` créé sur GitHub, `origin` configuré, `main` poussée (3 commits) — https://github.com/vincentlauriat/MoveApps
 - [x] Phase 1 — Core logic (`MoveAppsCore`) + Swift Testing suite, including the `onyx` ditto-data-loss fault-injection test (17 tests / 8 suites, independently re-verified green)
 - [x] Phase 2 — Menu bar UI (`MenuBarExtra`, Settings with root pickers + login item) — build green, tests untouched, **needs Vincent's interactive click-through** (agent had no screen/Accessibility access to verify visually)
-- [ ] Phase 3 — Main window UI (two-column view, transfer plan/progress, history, drag & drop)
+- [x] Phase 3 — Main window UI (two-column view, transfer plan/progress, history, drag & drop) — on branch `feature/phase3-main-window`, build + 17/17 tests independently re-verified, **not yet committed/pushed** (Vincent asked to defer, kept working on the app)
 - [ ] Phase 4 — `Scripts/release.sh` full pipeline (codesign/notarize/DMG), manual multi-Mac distribution for v1 (no Sparkle feed yet — private repo)
 - [ ] Phase 5 — Cross-validation vs `move-app.sh`: `--list`/`--dry-run` comparison, and the first-ever real DevApps→GitHub→DevApps round trip (reverse direction has zero prod mileage)
 - [ ] Later (not blocking v1): private Sparkle feed for auto-update (GitHub Releases + PAT, or similar) once the app is stable

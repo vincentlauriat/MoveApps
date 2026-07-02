@@ -26,8 +26,8 @@ Ported `move-app.sh`'s logic natively to `MoveAppsCore` (`StackDetector`, `IClou
 ### Phase 2 — UI menu bar (done, 2026-07-02)
 `MoveAppsApp.swift` (3 Scenes), `MenuBarQuickPickView`, `SettingsView` (root pickers via `NSOpenPanel` + bookmarks — plain, not true security-scoped, since the app can't be sandboxed while shelling out to `git`/`ditto`; login item toggle). Build green, `MoveAppsCoreTests` still 17/17. **Visual verification pending** — needs Vincent to click through interactively, the implementing agent had no screen/Accessibility access in this environment.
 
-### Phase 3 — UI main window + history
-`MainWindowView` (two-column GitHub/DevApps), `TransferPlanView` (confirmation step), `TransferProgressView`, `TransferHistoryView`, drag & drop.
+### Phase 3 — UI main window + history (done, 2026-07-02)
+`MainWindowViewModel` (@Observable, owns the real `TransferHistoryStore` at `~/Library/Application Support/MoveApps/history.json`), `MainWindowView` (two-column Archive/Active layout, native `Transferable`/`.dropDestination` drag & drop plus a non-drag button alternative, inline progress banner), `TransferPlanView` (confirmation sheet with `keepSymlink`/`reinstallNode` toggles), `TransferHistoryView` (past transfers, colored status, warning detail). Implemented on branch `feature/phase3-main-window`, build + `MoveAppsCoreTests` (17/17) independently re-verified outside the implementing agent. See `MEMORY.md` for full file-by-file detail. Not yet committed/merged — Vincent chose to keep building rather than pause for git housekeeping.
 
 ### Phase 4 — Packaging & multi-Mac distribution
 `Scripts/release.sh` full pipeline (codesign, notarize, DMG). v1: manual distribution (private repo, no Sparkle network feed yet). Validate first-launch flow on a fresh Mac (`NSOpenPanel` root selection, bookmarks are per-Mac).

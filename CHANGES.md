@@ -36,6 +36,10 @@
 
 ## 2026-07-02
 
+### Added (MoveApps.app)
+- Repo GitHub privé `vincentlauriat/MoveApps` créé, `origin` configuré, `main` poussée (3 commits des Phases 0-2).
+- Phase 3 (fenêtre principale) : `MainWindowViewModel` (@MainActor @Observable — historique via `TransferHistoryStore` pointé sur `~/Library/Application Support/MoveApps/history.json`, état de transfert en attente/en cours, lance `TransferPipeline` et journalise le `TransferRecord` en fin de run), `MainWindowView` (deux colonnes Archive/Actif, glisser-déposer d'un projet d'une colonne à l'autre via `Transferable`/`.dropDestination`, bouton flèche en alternative sans drag, bandeau de progression inline), `TransferPlanView` (sheet de confirmation avec toggles `keepSymlink`/`reinstallNode`), `TransferHistoryView` (historique des transferts, statut coloré, détail des avertissements). `MoveAppsApp.swift` branché sur la nouvelle fenêtre. Implémenté par un agent `executor`, vérifié indépendamment (build Debug de l'app complète + 17/17 tests `MoveAppsCoreTests` relancés séparément).
+
 ### Validation (cont'd)
 - Batch 4/7 (15 projects: `LocalWebManager`, `LocationManager`, `LocaWeb`, `MarkdownViewer`, `Medium`, `MenuBarManager`, `minutes`, `MLXTest`, `my-video`, `MyTasks`, `NatureSite`, `nDocMake`, `NetCheck`, `NetDiscoPocket`, `NetDiscoWeb`) migrated via `move-app.sh -y`. `LocalWebManager` (2.5G), `LocaWeb`, `Medium`, `MLXTest` (2.1G), `my-video`, `MyTasks`, `NetCheck` hit the `mv` iCloud timeout and fell back to `ditto` successfully. `MLXTest`'s venv recreated fine with real packages (`mlx`, `mlx-lm`). Independently re-verified: all 15 source folders confirmed gone, git branch/dirty-count rechecked on the 10 git repos in the batch, no residual absolute paths. Two warnings, both investigated in depth (not just accepting the script's own message):
   - `MyTasks`: git dirty-count changed mid-move (0→6 files) — a new warning type never seen in batches 1-3. Root cause: real uncommitted work (design doc edit, `.gitignore` change, new `package.json`/`.mcp.json`/`commandes.md`) was actively being written to the source while the migration ran. Not a tool bug, nothing lost.

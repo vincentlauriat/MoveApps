@@ -47,7 +47,11 @@ Sources/
 │   ├── Persistence/     # TransferHistoryStore (actor, JSON dans Application Support), TransferRecord
 │   ├── Settings/        # RootPathsSettings (@Observable, security-scoped bookmarks via NSOpenPanel)
 │   └── Support/         # ProcessRunner, AsyncTimeout
-├── MoveAppsUI/         # framework, dépend de Core — MainWindow/, MenuBar/, Settings/, DragDrop/, Components/
+├── MoveAppsUI/         # framework, dépend de Core
+│   ├── MainWindow/       # MainWindowView + MainWindowViewModel (deux colonnes, drag & drop natif Transferable),
+│   │                      # TransferPlanView (sheet de confirmation), TransferHistoryView
+│   ├── MenuBar/          # MenuBarIconView, MenuBarQuickPickView, QuickPickViewModel
+│   └── Settings/         # SettingsView, RootPathsController (NSOpenPanel + bookmarks)
 └── MoveApps/           # app target mince — MoveAppsApp.swift (Scenes MenuBarExtra + Window(id:) + Settings)
 ```
 

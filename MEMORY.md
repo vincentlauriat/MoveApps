@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-02
+last_updated: 2026-07-02 (Phase 3)
 ---
 
 # Project Memory — MoveApps
@@ -84,4 +84,16 @@ Two implementation-level findings worth remembering for future Swift work in thi
 
 **Phase 2 (menu bar UI) done 2026-07-02** — `MoveAppsApp.swift` (3 Scenes), `RootPathsController` (NSOpenPanel + bookmark persistence), menu bar quick-pick list wired to `TransferPipeline`, Settings (root pickers, login item). Build green, `MoveAppsCoreTests` untouched and still 17/17. **Not independently visually verified** — this environment has no screen recording/Accessibility access, so the menu bar appearance, Settings panel, `NSOpenPanel` flow and login-item toggle need Vincent to click through interactively before Phase 3 builds on top of them. Known deliberate limitation: true security-scoped bookmarks need sandbox entitlements the app can't have (it shells out to `git`/`ditto`); `RootPathsController` falls back to plain bookmarks with identical UX.
 
-Next: Phase 3 (main window UI + history). Full phase breakdown in `PLAN.md`.
+**Repo GitHub (2026-07-02)**: private repo `vincentlauriat/MoveApps` created and pushed (`origin`, branch `main`, 3 commits). Note for future sessions: creating a GitHub repo is not actually blocked by any technical guardrail (gh CLI is authenticated with `repo` scope) — it was withheld pending explicit user confirmation as a "visible/hard-to-reverse action on a shared platform" caution, per the global "Executing actions with care" instructions. Ask before creating repos, but don't claim a hard technical block if asked why.
+
+**Phase 3 (main window + history) done 2026-07-02**, on branch `feature/phase3-main-window` (not yet merged/pushed — Vincent asked to defer doc/git housekeeping and "avancer sur l'application", so this is uncommitted on purpose, pending his review). Implemented by an `executor` agent (opus) from a detailed prompt covering the full existing API surface, independently re-verified afterward (re-ran `xcodebuild -scheme MoveApps -configuration Debug build` → BUILD SUCCEEDED with zero concurrency warnings, and `xcodebuild test -scheme MoveAppsCoreTests` → 17/17 tests green, both re-run outside the implementing agent, not just trusting its self-report).
+
+New files under `Sources/MoveAppsUI/MainWindow/` (replacing `MainWindowPlaceholderView.swift`, which was deleted):
+- `MainWindowViewModel.swift` — `@MainActor @Observable`. Reuses `QuickPickViewModel.scanSync`/`.describe` (static, same module) rather than duplicating the project-scan/step-description logic; deliberately does NOT share mutable state with `QuickPickViewModel` (menu bar and main window can each run a transfer independently). Owns a `TransferHistoryStore` pointed at `~/Library/Application Support/MoveApps/history.json` (first real wiring of history persistence — previously only exercised by tests with an injected temp URL). Exposes `pendingPlan` (drives the confirmation sheet) and the same `isRunning`/`currentStepText`/`lastResult` pattern as `QuickPickViewModel`.
+- `MainWindowView.swift` — two-column layout (Archive/`~/Documents/GitHub` left, Active/`~/DevApps` right). Drag & drop via a `DraggedProject: Codable, Transferable` wrapper (`CodableRepresentation(contentType: .json)`) with `.draggable`/`.dropDestination(for:)` — macOS 26 native API, no third-party drag helper. A per-row arrow button remains as a non-drag alternative (accessibility/discoverability). Inline progress banner while `isRunning`, no separate progress sheet.
+- `TransferPlanView.swift` — confirmation sheet: project, `from → to`, `keepSymlink`/`reinstallNode` toggles, Confirm/Cancel.
+- `TransferHistoryView.swift` — past `TransferRecord`s, most recent first, colored status, French-translated `TransferWarning` detail per case.
+
+`MoveAppsApp.swift` now builds `MainWindowViewModel` in `@State` and injects it into `Window("MoveApps", id: "main")`, which renders `MainWindowView()`. `MenuBarExtra`/`Settings` scenes untouched.
+
+Next: Phase 4 (packaging: codesign/notarize/DMG via `Scripts/release.sh`, manual multi-Mac distribution). Full phase breakdown in `PLAN.md`. Still pending from Phase 2: Vincent's interactive click-through of the menu bar UI — not yet done, worth doing before Phase 4 packaging effort.

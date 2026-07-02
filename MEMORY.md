@@ -82,4 +82,6 @@ Two implementation-level findings worth remembering for future Swift work in thi
 - `FileManager` is not `Sendable`; expose it as a computed `.default` property in `actor`/`Sendable` types rather than storing an injected instance, to avoid `@unchecked Sendable`.
 - Deliberate deviation from `move-app.sh`: `TransferPipeline` defers source deletion on the copy/ditto fallback path until *after* the post-move git snapshot is compared — the bash script deleted first. This is what makes the `onyx`-style bug provably non-destructive in the Swift port (native rename is atomic and still deletes immediately, since there's no partial-copy risk to guard against).
 
-Next: Phase 2 (menu bar UI). Full phase breakdown in `PLAN.md`.
+**Phase 2 (menu bar UI) done 2026-07-02** — `MoveAppsApp.swift` (3 Scenes), `RootPathsController` (NSOpenPanel + bookmark persistence), menu bar quick-pick list wired to `TransferPipeline`, Settings (root pickers, login item). Build green, `MoveAppsCoreTests` untouched and still 17/17. **Not independently visually verified** — this environment has no screen recording/Accessibility access, so the menu bar appearance, Settings panel, `NSOpenPanel` flow and login-item toggle need Vincent to click through interactively before Phase 3 builds on top of them. Known deliberate limitation: true security-scoped bookmarks need sandbox entitlements the app can't have (it shells out to `git`/`ditto`); `RootPathsController` falls back to plain bookmarks with identical UX.
+
+Next: Phase 3 (main window UI + history). Full phase breakdown in `PLAN.md`.

@@ -23,8 +23,8 @@ XcodeGen `project.yml`, target skeletons (`MoveAppsCore`/`MoveAppsUI`/`MoveApps`
 ### Phase 1 — Core logic + tests (done, 2026-07-02)
 Ported `move-app.sh`'s logic natively to `MoveAppsCore` (`StackDetector`, `ICloudMaterializer`, `VenvManager`, `GitService`, `DirectoryMover`/`DirectoryCopying`, `NodeModulesInstaller`, `SymlinkVerifier`, `ResidualPathScanner`, `TransferPipeline` actor + `AsyncStream<TransferStep>`, `TransferHistoryStore`, `RootPathsSettings`). 17 tests / 8 suites, all green (independently re-verified), including the `onyx` fault-injection reproduction (`.critical` + source preserved). See MEMORY.md for implementation-level findings (`Process.waitUntilExit()` hang risk, deferred-deletion safety decision).
 
-### Phase 2 — UI menu bar
-`MoveAppsApp.swift` (3 Scenes), `MenuBarQuickPickView`, `SettingsView` (root pickers via `NSOpenPanel` + security-scoped bookmarks, login item toggle).
+### Phase 2 — UI menu bar (done, 2026-07-02)
+`MoveAppsApp.swift` (3 Scenes), `MenuBarQuickPickView`, `SettingsView` (root pickers via `NSOpenPanel` + bookmarks — plain, not true security-scoped, since the app can't be sandboxed while shelling out to `git`/`ditto`; login item toggle). Build green, `MoveAppsCoreTests` still 17/17. **Visual verification pending** — needs Vincent to click through interactively, the implementing agent had no screen/Accessibility access in this environment.
 
 ### Phase 3 — UI main window + history
 `MainWindowView` (two-column GitHub/DevApps), `TransferPlanView` (confirmation step), `TransferProgressView`, `TransferHistoryView`, drag & drop.

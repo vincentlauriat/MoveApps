@@ -6,7 +6,7 @@ App macOS native (+ script CLI legacy) pour migrer proprement des projets de dé
 
 Réécriture SwiftUI native de `move-app.sh` : menu bar + fenêtre principale, transferts **bidirectionnels** (GitHub→DevApps et DevApps→GitHub), utilisable sur plusieurs Macs. Voir `PLAN.md` pour le phasage, `ARCHITECTURE.md`/`ARCHITECTURE_EN.md` pour la conception technique, `MEMORY.md` pour les décisions et l'état d'avancement.
 
-État actuel : Phase 0 (scaffolding XcodeGen) terminée — build Debug + tests smoke verts. Prochaine étape : Phase 1 (portage de la logique métier + tests).
+État actuel : Phases 0 à 3 terminées — logique métier portée (17 tests), menu bar, et fenêtre principale (deux colonnes, drag & drop, plan de transfert, historique) build + tests verts. Repo GitHub privé `vincentlauriat/MoveApps` créé et poussé. Prochaine étape : Phase 4 (packaging/distribution).
 
 Le script `move-app.sh` documenté ci-dessous reste dans le repo comme référence/fallback CLI, non maintenu activement.
 
@@ -57,7 +57,7 @@ MoveApps/
 ├── project.yml           # spec XcodeGen de MoveApps.app
 ├── Sources/
 │   ├── MoveAppsCore/      # framework logique pure (Models/Services/Pipeline/Persistence/Settings/Support)
-│   ├── MoveAppsUI/        # framework UI (MainWindow/MenuBar/Settings/DragDrop/Components)
+│   ├── MoveAppsUI/        # framework UI (MainWindow/MenuBar/Settings)
 │   └── MoveApps/          # app target (MoveAppsApp.swift, Resources/Assets.xcassets)
 ├── Tests/MoveAppsCoreTests/
 ├── Scripts/               # fetch-sparkle-tools.sh, build.sh, release.sh

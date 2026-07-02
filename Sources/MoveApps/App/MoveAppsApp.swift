@@ -1,15 +1,19 @@
 import SwiftUI
+import MoveAppsCore
 import MoveAppsUI
 
 @main
 struct MoveAppsApp: App {
     @State private var rootPaths: RootPathsController
     @State private var quickPick: QuickPickViewModel
+    @State private var mainWindow: MainWindowViewModel
 
     init() {
         let controller = RootPathsController()
         _rootPaths = State(initialValue: controller)
         _quickPick = State(initialValue: QuickPickViewModel(rootPaths: controller))
+        let historyStore = TransferHistoryStore(fileURL: MainWindowViewModel.defaultHistoryURL())
+        _mainWindow = State(initialValue: MainWindowViewModel(rootPaths: controller, historyStore: historyStore))
     }
 
     var body: some Scene {
@@ -23,9 +27,9 @@ struct MoveAppsApp: App {
         .menuBarExtraStyle(.window)
 
         Window("MoveApps", id: "main") {
-            MainWindowPlaceholderView()
+            MainWindowView()
                 .environment(rootPaths)
-                .environment(quickPick)
+                .environment(mainWindow)
         }
 
         Settings {

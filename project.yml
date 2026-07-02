@@ -1,0 +1,111 @@
+name: MoveApps
+options:
+  bundleIdPrefix: com.vincent
+  deploymentTarget:
+    macOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+  groupSortPosition: top
+  xcodeVersion: "26.0"
+
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.9.1"
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: "KFLACS69T9"
+    ENABLE_HARDENED_RUNTIME: YES
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+
+targets:
+  MoveAppsCore:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Sources/MoveAppsCore
+    info:
+      path: Sources/MoveAppsCore/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vincent.MoveAppsCore
+        PRODUCT_NAME: MoveAppsCore
+        CODE_SIGN_IDENTITY: "-"
+        DEFINES_MODULE: NO
+
+  MoveAppsUI:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Sources/MoveAppsUI
+    dependencies:
+      - target: MoveAppsCore
+    info:
+      path: Sources/MoveAppsUI/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vincent.MoveAppsUI
+        PRODUCT_NAME: MoveAppsUI
+        CODE_SIGN_IDENTITY: "-"
+        DEFINES_MODULE: NO
+
+  MoveApps:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources/MoveApps
+      - path: Sources/MoveApps/Resources/Assets.xcassets
+        buildPhase: resources
+    dependencies:
+      - package: Sparkle
+      - target: MoveAppsCore
+        embed: true
+      - target: MoveAppsUI
+        embed: true
+    info:
+      path: Sources/MoveApps/Info.plist
+      properties:
+        CFBundleDisplayName: MoveApps
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "26.0"
+        LSUIElement: false
+        NSHighResolutionCapable: true
+        NSPrincipalClass: NSApplication
+        NSSupportsAutomaticGraphicsSwitching: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vincent.MoveApps
+        PRODUCT_NAME: MoveApps
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_IDENTITY: "Developer ID Application"
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_ENTITLEMENTS: Sources/MoveApps/MoveApps.entitlements
+
+  MoveAppsCoreTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests/MoveAppsCoreTests
+    dependencies:
+      - target: MoveAppsCore
+    info:
+      path: Tests/MoveAppsCoreTests/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.vincent.MoveAppsCoreTests
+        CODE_SIGN_IDENTITY: "-"
+
+schemes:
+  MoveAppsCoreTests:
+    build:
+      targets:
+        MoveAppsCoreTests: [test]
+    test:
+      targets:
+        - MoveAppsCoreTests

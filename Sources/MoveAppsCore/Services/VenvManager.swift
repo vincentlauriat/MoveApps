@@ -73,22 +73,39 @@ public struct VenvManager: Sendable {
 
         guard !info.packages.isEmpty else { return .recreatedEmpty }
 
+        let pip = newVenv.appendingPathComponent("bin/pip")
+
+        // Fast path: install every captured pin in one shot.
+        if await installBatch(info.packages, pip: pip) {
+            return .recreated
+        }
+
+        // A single unresolvable pin (e.g. a version yanked from PyPI since capture) fails
+        // the whole batch install as one unit, even though the rest would resolve fine.
+        // Retry package-by-package so everything that still resolves gets installed, and
+        // only the genuinely broken pins are reported.
+        var failed: [String] = []
+        for package in info.packages where !(await installBatch([package], pip: pip)) {
+            failed.append(package)
+        }
+        return failed.isEmpty ? .recreated : .partialInstall(failedPackages: failed)
+    }
+
+    private func installBatch(_ packages: [String], pip: URL) async -> Bool {
         let freezeFile = fileManager.temporaryDirectory
             .appendingPathComponent("moveapps-freeze-\(UUID().uuidString).txt")
-        let contents = info.packages.joined(separator: "\n")
         do {
-            try contents.write(to: freezeFile, atomically: true, encoding: .utf8)
+            try packages.joined(separator: "\n").write(to: freezeFile, atomically: true, encoding: .utf8)
         } catch {
-            return .recreatedEmpty
+            return false
         }
         defer { try? fileManager.removeItem(at: freezeFile) }
 
-        let pip = newVenv.appendingPathComponent("bin/pip")
         let install = await runner.run(
             ["install", "-r", freezeFile.path],
             executable: pip.path,
             timeout: .seconds(300)
         )
-        return install.didSucceed ? .recreated : .partialInstall(failedPackages: [])
+        return install.didSucceed
     }
 }

@@ -31,4 +31,31 @@ struct VenvManagerTests {
         #expect(info.packages.isEmpty)
         #expect(info.path == root)
     }
+
+    // Found via a real round trip on a real project (LinkManager, Phase 5 cross-validation):
+    // `pip freeze` pins exact versions, and a single pin that's since become unresolvable
+    // (e.g. yanked from PyPI) failed the whole batched `pip install -r freeze.txt` as one
+    // unit — losing every package, not just the broken one — and was misreported as
+    // `.partialInstall(failedPackages: [])` with no indication of what actually failed.
+    @Test("one unresolvable pin doesn't sink the whole install")
+    func partialInstallFallsBackPerPackage() async throws {
+        let root = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let venv = root.appendingPathComponent("venv")
+        let bogus = "totally-nonexistent-moveapps-test-package==999.999.999"
+        let info = VenvInfo(path: venv, packages: ["certifi", bogus])
+
+        let outcome = await VenvManager().recreate(info, at: venv)
+
+        guard case .partialInstall(let failed) = outcome else {
+            Issue.record("expected .partialInstall, got \(outcome)")
+            return
+        }
+        #expect(failed == [bogus])
+
+        // The resolvable package must still have been installed despite the bogus one.
+        let pip = venv.appendingPathComponent("bin/pip").path
+        #expect(FileManager.default.isExecutableFile(atPath: pip))
+    }
 }

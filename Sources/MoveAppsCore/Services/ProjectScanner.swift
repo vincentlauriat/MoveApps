@@ -49,6 +49,22 @@ public struct ProjectScanner: Sendable {
         return result
     }
 
+    /// Names of the top-level folders under `root` that are *not* themselves projects — i.e. the
+    /// category/container folders a project can be filed under (`Outils`, `NetworkTools`, …).
+    /// Sorted, so the transfer sheet can offer them as destination folders.
+    public func containerFolders(in root: URL) -> [String] {
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return [] }
+
+        return entries
+            .filter { isDirectory($0) && !detector.isProjectRoot(at: $0) }
+            .map { $0.lastPathComponent }
+            .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+
     private func isDirectory(_ url: URL) -> Bool {
         (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
     }

@@ -53,12 +53,24 @@ public actor TransferPipeline {
 
     private func execute(_ plan: TransferPlan, emit: @Sendable (TransferStep) -> Void) async {
         let source = plan.project.path
-        let destination = roots.url(for: plan.to).appendingPathComponent(plan.project.name)
+        // Place the project under an optional category folder on the destination side, creating
+        // that folder if needed — this is what lets a project keep or change its container folder
+        // across a transfer instead of being flattened to the root.
+        let destinationDir: URL
+        if let container = plan.destinationContainer, !container.isEmpty {
+            destinationDir = roots.url(for: plan.to).appendingPathComponent(container, isDirectory: true)
+        } else {
+            destinationDir = roots.url(for: plan.to)
+        }
+        let destination = destinationDir.appendingPathComponent(plan.project.name)
 
         guard !fileManager.fileExists(atPath: destination.path) else {
             emit(.finished(.failed(reason: "destination already exists: \(destination.path)", destinationURL: destination)))
             return
         }
+
+        // Ensure the (possibly new) category folder exists before the move writes into it.
+        try? fileManager.createDirectory(at: destinationDir, withIntermediateDirectories: true)
 
         var warnings: [TransferWarning] = []
 

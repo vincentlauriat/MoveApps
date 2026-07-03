@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import MoveAppsCore
 
 /// The menu-bar popup, reworked as a read-only dashboard: at-a-glance stats about both roots,
@@ -8,8 +9,6 @@ public struct MenuBarDashboardView: View {
     @Environment(RootPathsController.self) private var rootPaths
     @Environment(DashboardViewModel.self) private var model
     @Environment(\.openWindow) private var openWindow
-
-    @State private var showNewProject = false
 
     public init() {}
 
@@ -35,9 +34,6 @@ public struct MenuBarDashboardView: View {
         .padding(14)
         .frame(width: 340, height: 420)
         .task { model.refresh() }
-        .sheet(isPresented: $showNewProject) {
-            NewProjectView()
-        }
     }
 
     private var header: some View {
@@ -128,7 +124,10 @@ public struct MenuBarDashboardView: View {
     private var actions: some View {
         HStack(spacing: 10) {
             Button {
-                showNewProject = true
+                // Open a real window, not a sheet: the menu-bar popover is ephemeral and would
+                // dismiss the moment the template picker's native menu takes focus.
+                openWindow(id: "new-project")
+                NSApp.activate(ignoringOtherApps: true)
             } label: {
                 Label("Nouveau projet", systemImage: "plus")
                     .frame(maxWidth: .infinity)

@@ -70,9 +70,14 @@ public struct MainWindowView: View {
         .sheet(item: $model.pendingPlan) { plan in
             TransferPlanView(
                 plan: plan,
+                existingContainers: model.destinationContainers(for: plan.to),
                 onCancel: { model.cancelPending() },
-                onConfirm: { keepSymlink, reinstallNode in
-                    model.confirmPending(keepSymlink: keepSymlink, reinstallNode: reinstallNode)
+                onConfirm: { keepSymlink, reinstallNode, destinationContainer in
+                    model.confirmPending(
+                        keepSymlink: keepSymlink,
+                        reinstallNode: reinstallNode,
+                        destinationContainer: destinationContainer
+                    )
                 }
             )
         }

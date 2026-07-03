@@ -34,6 +34,16 @@ struct MoveAppsApp: App {
                 .environment(mainWindow)
         }
 
+        // Standalone window (not a sheet in the menu-bar popover, which would dismiss when the
+        // template picker's native menu takes focus).
+        Window("Nouveau projet", id: "new-project") {
+            NewProjectView()
+                .environment(rootPaths)
+                .environment(dashboard)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
+
         Settings {
             SettingsView()
                 .environment(rootPaths)

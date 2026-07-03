@@ -31,6 +31,18 @@ public actor GitService {
         return GitSnapshot(branch: branch, head: head, dirtyCount: entries.count, deletedPaths: deleted)
     }
 
+    /// Initializes a fresh git repository at `directory` (`git init`). Returns whether it
+    /// succeeded. A no-op-ish call on a directory that is already a repo still returns `true`
+    /// (git re-initializing is safe), but callers generally guard with `isRepository` first.
+    public func initRepository(_ directory: URL) async -> Bool {
+        let result = await runner.run(
+            ["-C", directory.path, "init"],
+            executable: gitPath,
+            timeout: .seconds(20)
+        )
+        return result.didSucceed
+    }
+
     private func revParse(_ args: [String], in directory: URL) async -> String? {
         let result = await runner.run(
             ["-C", directory.path, "rev-parse"] + args,

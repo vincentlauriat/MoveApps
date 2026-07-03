@@ -6,24 +6,25 @@ import MoveAppsUI
 struct MoveAppsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var rootPaths: RootPathsController
-    @State private var quickPick: QuickPickViewModel
+    @State private var dashboard: DashboardViewModel
     @State private var mainWindow: MainWindowViewModel
 
     init() {
         let controller = RootPathsController()
         _rootPaths = State(initialValue: controller)
-        _quickPick = State(initialValue: QuickPickViewModel(rootPaths: controller))
+        _dashboard = State(initialValue: DashboardViewModel(rootPaths: controller))
         let historyStore = TransferHistoryStore(fileURL: MainWindowViewModel.defaultHistoryURL())
         _mainWindow = State(initialValue: MainWindowViewModel(rootPaths: controller, historyStore: historyStore))
     }
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarQuickPickView()
+            MenuBarDashboardView()
                 .environment(rootPaths)
-                .environment(quickPick)
+                .environment(dashboard)
         } label: {
-            MenuBarIconView(isBusy: quickPick.isRunning)
+            // Transfers only run from the main window now, so the icon reflects its state.
+            MenuBarIconView(isBusy: mainWindow.isRunning)
         }
         .menuBarExtraStyle(.window)
 

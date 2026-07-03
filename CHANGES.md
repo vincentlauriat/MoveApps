@@ -115,3 +115,28 @@
 
 ### Validation
 - **Real, full release run**: `./Scripts/release.sh 0.1.0` (no `SKIP_NOTARIZE`) — Release build, Developer ID + Hardened Runtime signing of all nested binaries, DMG creation, Apple notarization submission (`status: Accepted`), stapling — all succeeded end to end. Independently re-verified beyond the script's own success message: mounted the stapled DMG, `spctl -a -t exec` → `accepted, source=Notarized Developer ID` (the notarized designation, not just the plain Developer ID acceptance seen in the earlier `SKIP_NOTARIZE` dry run), `xcrun stapler validate` → "The validate action worked!", `codesign --verify --deep --strict` → OK. `release/MoveApps-0.1.0.dmg` (1.3M) is a genuinely distributable, Gatekeeper-clean artifact — Phase 4 is done.
+
+## MoveApps.app — post-launch UX fixes (2026-07-03)
+
+### Added
+- `Toggle("Afficher dans le Dock")` in Settings, `@AppStorage("showInDock")` (default `true`). New `AppDelegate.swift` drives `NSApp.setActivationPolicy` from it at launch and overrides `applicationShouldTerminateAfterLastWindowClosed` to never quit on last-window-close (critical for menu-bar-only mode). `project.yml`'s `LSUIElement` flipped `false` → `true` so the OS never force-shows a Dock icon before our code decides.
+- `MoveAppsCore/Services/ProjectScanner.swift` + `StackDetector.isProjectRoot(at:)` — a folder is only listed as a project if it's itself one (own `.git` or a marker directly at its root); container/category folders that merely group several real projects (Vincent's actual `~/DevApps` layout: `NetworkTools`, `AzureTools`, `MacTools`, etc.) now have their real sub-projects surfaced individually instead of one undifferentiated top-level entry. `QuickPickViewModel.scanSync` (shared by the menu bar and the main window) now delegates to it.
+- `Sources/MoveAppsUI/Support/StackTagStyle.swift` — shared per-technology tinted glass tag badge, used consistently across all three UI surfaces.
+
+### Changed
+- Full Liquid Glass (macOS 26) visual redesign of the whole UI surface — `MainWindowView`, `TransferPlanView`, `TransferHistoryView`, `MenuBarQuickPickView`, `SettingsView` — real `.glassEffect()`/`GlassEffectContainer`/`.buttonStyle(.glass/.glassProminent)` adoption, not a manual-blur imitation. Presentation-only, zero changes to any view model or `MoveAppsCore` logic.
+
+### Validation
+- Project scanner fix verified against the real `~/DevApps` (read-only scratch test, deleted after): 33 top-level folders → 91 individually-selectable real projects after unpacking; `NetworkTools` specifically confirmed decomposed into its 6 real sub-projects. New regression test `ProjectScannerTests.swift`.
+- Full app rebuild (`xcodebuild -scheme MoveApps -configuration Debug build` → `BUILD SUCCEEDED`, zero concurrency warnings) and `MoveAppsCoreTests` (`21/21`, 9 suites) independently re-verified after both the scanner fix and the Liquid Glass redesign.
+- Dock-toggle default-launch behavior confirmed (process appears in Dock with the default `true`); the live in-app toggle path and all Liquid Glass visual rendering could **not** be visually confirmed in this headless environment — flagged for Vincent to check himself.
+
+### Added (UX pass 2 — container hierarchy & unified confirmation, 2026-07-03)
+- `ProjectCandidate.containerName` — the name of the category folder a project was unpacked from (`nil` for a project sitting directly at a root). `ProjectScanner` fills it when it flattens a container folder into its children. Surfaced as a discreet `folder`-icon subtitle under the project name in the main window rows, the menu-bar rows, and the transfer confirmation sheet, so Vincent can see where a project actually lives on disk (e.g. `NetCheck` / `NetworkTools`).
+
+### Changed (UX pass 2)
+- Menu-bar popup no longer transfers instantly on tap — it now opens the same `TransferPlanView` confirmation sheet as the main window, so both surfaces share one confirm-before-move choreography. `TransferPlanView` was made view-model-agnostic (plain `onCancel`/`onConfirm` closures) so it can be reused unmodified from both `MainWindowViewModel` and `QuickPickViewModel`; `QuickPickViewModel` gained the `pendingPlan`/`prepareTransfer`/`confirmPending`/`cancelPending` flow mirroring `MainWindowViewModel`.
+- Menu-bar popup project list split into two per-root sections (Actif / Archive with counts) instead of one flat alphabetical list that mixed both roots and forced reading each row's small label to tell them apart.
+
+### Validation (UX pass 2)
+- `ProjectScannerTests` extended to assert `containerName` (`"Gatsby"` for unpacked sub-projects, `nil` for a top-level project and for the stray fallback folder). Full `MoveAppsCoreTests` re-run: `21/21`, 9 suites, `TEST SUCCEEDED`; app rebuild `BUILD SUCCEEDED`.

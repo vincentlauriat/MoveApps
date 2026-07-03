@@ -3,24 +3,32 @@ import MoveAppsCore
 
 /// Confirmation sheet for a pending transfer: shows the project and its direction, lets the
 /// user toggle the symlink-compatibility and node_modules-reinstall options, then confirms or
-/// cancels.
+/// cancels. Takes plain closures rather than depending on a specific view model, so it can be
+/// reused unmodified from both the main window (`MainWindowViewModel`) and the menu bar popup
+/// (`QuickPickViewModel`) — those two view models are deliberately independent state, not shared.
 struct TransferPlanView: View {
-    @Environment(MainWindowViewModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
     let plan: TransferPlan
+    let onCancel: () -> Void
+    let onConfirm: (_ keepSymlink: Bool, _ reinstallNode: Bool) -> Void
 
     @State private var keepSymlink = false
     @State private var reinstallNode = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 18) {
             Text("Confirmer le transfert")
-                .font(.headline)
+                .font(.system(.title3, design: .rounded, weight: .bold))
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(plan.project.name)
-                    .font(.title3).bold()
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                if let container = plan.project.containerName {
+                    Label(container, systemImage: "folder")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 HStack(spacing: 6) {
                     Text(rootLabel(plan.from))
                     Image(systemName: "arrow.right")
@@ -29,47 +37,43 @@ struct TransferPlanView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
 
-                if !sortedTags.isEmpty {
-                    HStack(spacing: 4) {
-                        ForEach(sortedTags, id: \.self) { tag in
-                            Text(tag.rawValue)
-                                .font(.caption2)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(.quaternary, in: Capsule())
-                        }
-                    }
-                }
+                StackTagRow(tags: sortedTags)
             }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            Divider()
-
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 10) {
                 Toggle("Conserver un lien de compatibilité", isOn: $keepSymlink)
                 Toggle("Réinstaller node_modules", isOn: $reinstallNode)
             }
+            .toggleStyle(.switch)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
             Spacer(minLength: 0)
 
             HStack {
                 Button("Annuler", role: .cancel) {
-                    model.cancelPending()
+                    onCancel()
                     dismiss()
                 }
                 .keyboardShortcut(.cancelAction)
+                .buttonStyle(.glass)
 
                 Spacer()
 
                 Button("Confirmer") {
-                    model.confirmPending(keepSymlink: keepSymlink, reinstallNode: reinstallNode)
+                    onConfirm(keepSymlink, reinstallNode)
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.glassProminent)
             }
         }
-        .padding(20)
-        .frame(width: 420)
+        .padding(22)
+        .frame(width: 440)
     }
 
     private var sortedTags: [StackTag] {

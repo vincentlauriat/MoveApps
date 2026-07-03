@@ -11,14 +11,15 @@ struct TransferHistoryView: View {
         VStack(spacing: 0) {
             HStack {
                 Text("Historique")
-                    .font(.headline)
+                    .font(.system(.title3, design: .rounded, weight: .bold))
                 Spacer()
                 Button("Fermer") { dismiss() }
                     .keyboardShortcut(.cancelAction)
+                    .buttonStyle(.glass)
             }
-            .padding(16)
+            .padding(18)
 
-            Divider()
+            Divider().opacity(0.5)
 
             if model.history.isEmpty {
                 Text("Aucun transfert enregistré")
@@ -27,27 +28,34 @@ struct TransferHistoryView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(24)
             } else {
-                List(model.history) { record in
-                    HistoryRowView(record: record)
+                ScrollView {
+                    GlassEffectContainer(spacing: 10) {
+                        LazyVStack(spacing: 10) {
+                            ForEach(model.history) { record in
+                                HistoryRowView(record: record)
+                            }
+                        }
+                    }
+                    .padding(16)
                 }
-                .listStyle(.inset)
             }
         }
         .frame(width: 520, height: 460)
     }
 }
 
-/// One history entry.
+/// One history entry, rendered as a glass card so its status colour reads as a real accent
+/// rather than flat text.
 struct HistoryRowView: View {
     let record: TransferRecord
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Image(systemName: statusIcon)
                     .foregroundStyle(statusColor)
                 Text(record.projectName)
-                    .font(.body).bold()
+                    .font(.system(.body, design: .rounded, weight: .semibold))
                 Spacer()
                 Text(record.date, format: .dateTime.day().month().year().hour().minute())
                     .font(.caption)
@@ -66,7 +74,7 @@ struct HistoryRowView: View {
             .foregroundStyle(.secondary)
 
             if !record.warnings.isEmpty {
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 3) {
                     ForEach(Array(record.warnings.enumerated()), id: \.offset) { _, warning in
                         Label(warningText(warning), systemImage: "exclamationmark.triangle")
                             .font(.caption2)
@@ -76,7 +84,12 @@ struct HistoryRowView: View {
                 .padding(.top, 2)
             }
         }
-        .padding(.vertical, 4)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(
+            .regular.tint(statusColor.opacity(0.12)),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
     }
 
     private var statusIcon: String {

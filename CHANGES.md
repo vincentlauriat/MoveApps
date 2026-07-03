@@ -172,3 +172,11 @@
 
 ### Validation (multi-select)
 - Full app `BUILD SUCCEEDED`, `MoveAppsCoreTests` **30 / 11 suites** green (batch logic lives in the UI view model; Core pipeline unchanged and still covered by the container-placement test). Batch UI flow to be confirmed by Vincent.
+
+### Added (template post-copy init script, 2026-07-03)
+- "New project from template" now runs a template's optional post-copy init script. When a copied template ships `Scripts/bootstrap.sh` (relative path exposed as `templateInitScriptRelativePath`) and the user opts in, `TemplateService.createProject` executes it via the new `InitScriptRunning` protocol (real impl `BootstrapScriptRunner` runs `bash <script> <displayName> <slug>` with Homebrew bindirs prepended to `PATH`, since a Finder-launched app inherits a minimal `PATH` without `xcodegen`/`swift`). This lets AppKitTemplate rename identifiers, regenerate its `.xcodeproj`, generate an icon and seed git in one step — the "create → ready" flow.
+- `ProjectCreationResult.created` gained an `initScript: InitScriptOutcome` (`.none`/`.skipped`/`.ran`/`.failed`); when the script runs it owns git, so no separate `git init` is attempted. `TemplateService.slug(from:)` derives a space-free Xcode-friendly slug from the project name (`"My New App"` → `"MyNewApp"`).
+- `NewProjectView`: a "Exécuter le script d'initialisation du modèle" toggle appears only for templates that ship a script; the result banner reports the script outcome (created & initialized / created but script failed).
+
+### Validation (init script)
+- `MoveAppsCoreTests` **33 / 11 suites** green (3 new `TemplateService` tests: runs on opt-in with correct display/slug args, skips on opt-out, reports `.failed` on non-zero exit — via a `StubInitScriptRunner`). App `BUILD SUCCEEDED` (Swift 6 strict concurrency, no warnings). End-to-end: the exact `BootstrapScriptRunner` bash command run against the real AppKitTemplate produced a renamed project that `BUILD SUCCEEDED` (macOS) with git seeded by the bootstrap commit. UI toggle to be confirmed by Vincent.

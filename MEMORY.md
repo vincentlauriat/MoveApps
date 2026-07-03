@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-03 (menu-bar dashboard refactor)
+last_updated: 2026-07-03 (multi-select batch transfers)
 ---
 
 # Project Memory — MoveApps
@@ -173,3 +173,12 @@ Key decisions / structure of the dashboard refactor:
 Two follow-up fixes on the same branch (not yet committed as of this update):
 - **New-project window**: `NewProjectView` was a `.sheet` inside the menu-bar popover; opening the template `Picker`'s native menu made the ephemeral popover resign key and close, taking the sheet with it. Moved it to a standalone `Window("Nouveau projet", id: "new-project")` scene opened via `openWindow(id:)` + `NSApp.activate`. General lesson for this menu-bar app: **never present a `.sheet` with a `Picker`/menu/NSOpenPanel inside the `MenuBarExtra(.window)` popover** — the popover is ephemeral and dies on focus loss; use a real `Window` scene instead.
 - **Destination folder / structure preservation** (Vincent: "dans le repertoire Actif j'ai une structure de fichiers que je perds totalement… je voudrais deplacer des projets dans une structure de repertoire… et vis et versa"): the pipeline always flattened a project to `<destRoot>/<name>`, dropping its category folder. Added `TransferPlan.destinationContainer: String?` — the project now lands under `<destRoot>/<container>/<name>` (folder auto-created), both directions. `TransferPlanView` gained a folder picker (Racine / existing folders via `ProjectScanner.containerFolders(in:)` / new folder), defaulting to the project's own `containerName` so structure is preserved by default. This finally resolves the "behavioral side effect" flagged in the post-launch scanner note above — transfers are no longer forced-flat. **30 tests / 11 suites green** (new pipeline test for container placement). Transfers only originate from the main window now, so only `TransferPlanView` + `MainWindowViewModel` needed the wiring.
+
+Merged to `main` and pushed (`3cf55bb..ddbc855`, both feature branches deleted) on Vincent's "merge sur main et pousse".
+
+## Multi-select batch transfers (2026-07-03)
+
+Vincent: "je voudrais pouvoir selectionner plusieurs projets pour faire des transferts." Chosen shape (his answers): **checkboxes** per row + batch bar; batch destination folder defaults to **"conserver chacun le sien"** (each project keeps its own container folder) with an option to force all into one folder.
+- Each `MainProjectRowView` has a selection checkbox; `selection: Set<URL>` on `MainWindowViewModel`. Selection is **confined to one root at a time** — `toggleSelection` clears the set if you check a project in a different root, since a batch only moves one direction. A batch bar appears at the bottom (mutually exclusive with the progress strip) when the selection is non-empty.
+- `BatchTransferView` sheet: project list + direction + a folder `Picker` whose default is `.preserveEach`, plus Racine/existing/new to force one folder. `BatchFolderMode` enum (`.preserveEach` / `.fixed(String?)`). `runBatch` runs plans **sequentially** (pipeline touches git/FS; sequential keeps progress legible and a single failure doesn't abort the rest), surfacing `batchIndex`/`batchTotal` as "Projet i/N" in the progress strip.
+- Batch logic lives entirely in the UI view model + views; `MoveAppsCore` and the pipeline are unchanged (still 30 tests / 11 suites; batch reuses the same per-project `TransferPlan` path). Build green, app relaunched. **Batch UI not yet visually confirmed** by Vincent. Not yet committed as of this update.

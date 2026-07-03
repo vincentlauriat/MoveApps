@@ -164,3 +164,11 @@
 
 ### Validation (destination folder)
 - New pipeline test: "places the project under a (newly created) destination container folder" — moving `X` into a not-yet-existing `Outils/` lands it at `active/Outils/X` (not the flat `active/X`). Full suite: **30 tests / 11 suites, `TEST SUCCEEDED`**; app `BUILD SUCCEEDED`. UI to be confirmed by Vincent.
+
+### Added (multi-select batch transfers, 2026-07-03)
+- Each project row in the main window gained a **selection checkbox**; checked rows raise a **batch bar** ("N projets sélectionnés · Transférer vers …"). Selection is confined to one root at a time (checking a project in the other column resets the selection, since a batch moves one direction). The per-row arrow still does a quick single transfer.
+- `BatchTransferView` sheet: lists the selected projects + direction, a **destination-folder** choice defaulting to "Conserver le dossier d'origine" (each project keeps its own container folder) with the option to force all into one folder (Racine / existing / new), plus the shared symlink/node options.
+- `MainWindowViewModel` gained `selection`/`toggleSelection`/`clearSelection`/`selectionRoot`/`selectedProjects`, `prepareBatchTransfer`/`confirmBatch`, and `runBatch` which runs the transfers **sequentially** (never parallel — the pipeline touches git/FS; one failure doesn't abort the rest) with `batchIndex`/`batchTotal` surfaced in the progress strip ("Projet i/N"). New types `PendingBatch`, `BatchFolderMode`.
+
+### Validation (multi-select)
+- Full app `BUILD SUCCEEDED`, `MoveAppsCoreTests` **30 / 11 suites** green (batch logic lives in the UI view model; Core pipeline unchanged and still covered by the container-placement test). Batch UI flow to be confirmed by Vincent.

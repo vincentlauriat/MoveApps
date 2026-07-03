@@ -63,6 +63,7 @@
 		D7775C4EDC0B9ECE4D05846B /* MainWindowViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A896A9D9BAEF023D644C35 /* MainWindowViewModel.swift */; };
 		D8D5AA1DAAB643898A645B78 /* StackDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4426AF94CCC9091AE4956EFD /* StackDetector.swift */; };
 		DAAEDB9E2A272AF647B054C5 /* TemplateService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFEADF0204A90392A0963A4B /* TemplateService.swift */; };
+		DDBB5FD67B532C3E91C81C54 /* BatchTransferView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24487703A74D5D21E9BE1F6B /* BatchTransferView.swift */; };
 		E08E9E26060F9A118ADEE101 /* TransferHistoryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E85447F10CCF259B8F630D2B /* TransferHistoryStoreTests.swift */; };
 		E15DFC968748669B1671978C /* TransferHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFBC9A1956B37E13863CBA2D /* TransferHistoryStore.swift */; };
 		E46AE61482CA7EED0557C702 /* TransferWarning.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28AD05B659601385729ED57 /* TransferWarning.swift */; };
@@ -141,6 +142,7 @@
 		17A9D164BC9FF377C6D7484C /* MoveApps.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoveApps.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		18B5A072FC56952F69AF2875 /* DiskUsageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskUsageTests.swift; sourceTree = "<group>"; };
 		1AD8DCB6E0FBD7A85657A92C /* MenuBarDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarDashboardView.swift; sourceTree = "<group>"; };
+		24487703A74D5D21E9BE1F6B /* BatchTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchTransferView.swift; sourceTree = "<group>"; };
 		252C966A9B6D3A56AF38D1AF /* TransferPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferPipeline.swift; sourceTree = "<group>"; };
 		2AB121AC30D21059A7198683 /* StackDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackDetectorTests.swift; sourceTree = "<group>"; };
 		2C398EE1582E98F28D10D2F3 /* ICloudMaterializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudMaterializer.swift; sourceTree = "<group>"; };
@@ -343,6 +345,7 @@
 		6A620082291549C5297F993B /* MainWindow */ = {
 			isa = PBXGroup;
 			children = (
+				24487703A74D5D21E9BE1F6B /* BatchTransferView.swift */,
 				E367A79FD3582EF9BA05AB91 /* MainWindowView.swift */,
 				88A896A9D9BAEF023D644C35 /* MainWindowViewModel.swift */,
 				C1E69FC94B5048C93C551898 /* TransferHistoryView.swift */,
@@ -620,6 +623,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DDBB5FD67B532C3E91C81C54 /* BatchTransferView.swift in Sources */,
 				AEC71687C7AB42422FCD56B3 /* DashboardViewModel.swift in Sources */,
 				1C3A0EC287AA75E14F74063F /* MainWindowView.swift in Sources */,
 				D7775C4EDC0B9ECE4D05846B /* MainWindowViewModel.swift in Sources */,

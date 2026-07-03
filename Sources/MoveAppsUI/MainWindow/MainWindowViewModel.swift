@@ -73,10 +73,22 @@ public final class MainWindowViewModel {
 
     // MARK: - Preparing a transfer
 
-    /// Builds a default plan (no options) for the given project and opens the confirmation sheet.
+    /// Builds a default plan and opens the confirmation sheet. The destination folder defaults to
+    /// the project's own container folder (so a project filed under `Outils/` stays under an
+    /// `Outils/` on the other side) — the user can change it before confirming.
     public func prepareTransfer(_ project: QuickProject) {
         guard !isRunning else { return }
-        pendingPlan = TransferPlan(project: project.candidate, from: project.root, to: project.destination)
+        pendingPlan = TransferPlan(
+            project: project.candidate,
+            from: project.root,
+            to: project.destination,
+            destinationContainer: project.candidate.containerName
+        )
+    }
+
+    /// The existing category folders on `root`'s side, offered as destination folders in the sheet.
+    public func destinationContainers(for root: RootKind) -> [String] {
+        ProjectScanner().containerFolders(in: rootPaths.settings.locations.url(for: root))
     }
 
     /// Resolves a dropped project by its path and prepares a transfer for it.
@@ -89,16 +101,18 @@ public final class MainWindowViewModel {
         pendingPlan = nil
     }
 
-    /// Confirms the pending plan with the chosen options and starts the transfer.
-    public func confirmPending(keepSymlink: Bool, reinstallNode: Bool) {
+    /// Confirms the pending plan with the chosen options and destination folder, then transfers.
+    public func confirmPending(keepSymlink: Bool, reinstallNode: Bool, destinationContainer: String?) {
         guard let base = pendingPlan else { return }
         pendingPlan = nil
+        let cleaned = destinationContainer?.trimmingCharacters(in: .whitespacesAndNewlines)
         let plan = TransferPlan(
             project: base.project,
             from: base.from,
             to: base.to,
             keepSymlink: keepSymlink,
-            reinstallNode: reinstallNode
+            reinstallNode: reinstallNode,
+            destinationContainer: (cleaned?.isEmpty ?? true) ? nil : cleaned
         )
         run(plan)
     }

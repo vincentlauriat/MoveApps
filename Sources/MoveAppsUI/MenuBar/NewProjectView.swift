@@ -1,10 +1,14 @@
 import SwiftUI
 import MoveAppsCore
 
-/// Sheet for creating a new project from a template. Pick a template, name it, optionally seed a
+/// Window for creating a new project from a template. Pick a template, name it, optionally seed a
 /// git repo; the project is created under the Active root. Shows a clear result (or a hint to
 /// configure a templates folder when none are found).
-struct NewProjectView: View {
+///
+/// This is a standalone `Window` scene, not a sheet inside the menu-bar popover: the popover is
+/// ephemeral and closes the instant it loses key focus, so opening the template `Picker`'s native
+/// menu from within it would dismiss the whole thing. A real window is decoupled from that.
+public struct NewProjectView: View {
     @Environment(DashboardViewModel.self) private var model
     @Environment(RootPathsController.self) private var rootPaths
     @Environment(\.dismiss) private var dismiss
@@ -13,7 +17,9 @@ struct NewProjectView: View {
     @State private var selectedTemplate: ProjectTemplate?
     @State private var gitInit = true
 
-    var body: some View {
+    public init() {}
+
+    public var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Nouveau projet")
                 .font(.system(.title3, design: .rounded, weight: .bold))
@@ -51,8 +57,10 @@ struct NewProjectView: View {
             }
         }
         .padding(22)
-        .frame(width: 440)
+        .frame(width: 440, height: 380)
         .onAppear {
+            // Pick up any templates added since the popover last scanned, then default-select one.
+            model.reloadTemplates()
             if selectedTemplate == nil { selectedTemplate = model.templates.first }
         }
     }

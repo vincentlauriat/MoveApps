@@ -126,4 +126,31 @@ struct TransferPipelineTests {
         #expect(result?.sourceDeleted == false)
         #expect(FileManager.default.fileExists(atPath: scenario.source.path))
     }
+
+    // MARK: - Destination folder
+
+    @Test("places the project under a (newly created) destination container folder")
+    func placesIntoDestinationContainer() async {
+        let scenario = makeScenario(repoName: "X", files: ["main.swift": "print(1)\n"])
+        defer { try? FileManager.default.removeItem(at: scenario.cleanup) }
+
+        // Move X into a "Outils" folder on the active side that does not exist yet.
+        let plan = TransferPlan(
+            project: scenario.plan.project,
+            from: .archive,
+            to: .active,
+            destinationContainer: "Outils"
+        )
+        let pipeline = TransferPipeline(roots: scenario.roots)
+        let result = await pipeline.finalResult(for: plan)
+
+        let landed = scenario.roots.active
+            .appendingPathComponent("Outils", isDirectory: true)
+            .appendingPathComponent("X", isDirectory: true)
+        #expect(result?.status == .ok)
+        #expect(result?.destinationURL?.standardizedFileURL == landed.standardizedFileURL)
+        #expect(FileManager.default.fileExists(atPath: landed.appendingPathComponent("main.swift").path))
+        // The flat destination must NOT have been used.
+        #expect(!FileManager.default.fileExists(atPath: scenario.destination.appendingPathComponent("main.swift").path))
+    }
 }

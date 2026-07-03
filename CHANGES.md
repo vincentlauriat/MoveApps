@@ -153,3 +153,14 @@
 
 ### Validation (dashboard refactor)
 - New Core tests: `TemplateServiceTests` (list/sort, missing root, create+git-init, refuse-overwrite, invalid-name) and `DiskUsageTests` (measures content, nil for missing path, locale-agnostic formatting). Full suite: **29 tests / 11 suites, `TEST SUCCEEDED`**; full app `BUILD SUCCEEDED`. Visual rendering of the dashboard to be confirmed by Vincent (no screen access here).
+
+### Fixed (new-project window)
+- "Nouveau projet" was a `.sheet` presented inside the menu-bar popover; opening the template `Picker`'s native menu made the ephemeral popover resign key and close, taking the sheet with it (Vincent: "elle disparait si j'essaye de voir les differents types de projet"). Moved `NewProjectView` into a standalone `Window("Nouveau projet", id: "new-project")` scene opened via `openWindow` + `NSApp.activate` — decoupled from the popover, so the picker works. `NewProjectView` made `public`, reloads templates on appear.
+
+### Added (destination folder / structure preservation, 2026-07-03)
+- Transfers can now target a **destination folder** instead of always flattening to the root. `TransferPlan.destinationContainer: String?` — the project lands under `<destinationRoot>/<container>/<name>` (folder created if absent), both directions. Vincent: a project filed under `Outils/` on one side should be placeable under a chosen folder on the other, and vice versa; the old pipeline dropped the container prefix entirely.
+- `TransferPlanView` gained a "Dossier de destination" picker: **Racine**, each existing category folder on the destination side, or **Nouveau dossier…** (free-text). It defaults to the project's own container folder (`ProjectCandidate.containerName`), so structure is preserved by default and overridable per transfer. The `from → to` line now shows `Racine ▸ Outils`-style paths.
+- `ProjectScanner.containerFolders(in:)` lists the destination side's existing category folders (top-level dirs that aren't themselves projects). `MainWindowViewModel.destinationContainers(for:)` feeds the picker; `confirmPending` threads the chosen folder through.
+
+### Validation (destination folder)
+- New pipeline test: "places the project under a (newly created) destination container folder" — moving `X` into a not-yet-existing `Outils/` lands it at `active/Outils/X` (not the flat `active/X`). Full suite: **30 tests / 11 suites, `TEST SUCCEEDED`**; app `BUILD SUCCEEDED`. UI to be confirmed by Vincent.

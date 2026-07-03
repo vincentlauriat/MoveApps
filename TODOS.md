@@ -78,3 +78,5 @@
 - [x] `TemplateService` + `ProjectTemplate` + `GitService.initRepository` + réglage du dossier de modèles dans Settings. Tests `TemplateServiceTests`. **29 tests / 11 suites verts, BUILD SUCCEEDED.**
 - [x] `QuickPickViewModel` retiré → `ProjectListing` (statics `scanSync`/`describe` + `QuickProject`). Icône barre de menu pilotée par `mainWindow.isRunning`.
 - [ ] **À valider visuellement par Vincent** : rendu du tableau de bord + flux « Nouveau projet » (pas d'accès écran ici).
+- [x] **Fenêtre « Nouveau projet »** : la sheet dans le popover disparaissait quand on ouvrait le Picker de modèles (popover éphémère qui perd le focus) → déplacée dans une vraie `Window("new-project")` indépendante.
+- [x] **Choix du dossier de destination** : `TransferPlan.destinationContainer` + sélecteur dans `TransferPlanView` (Racine / dossiers existants / nouveau). Défaut = dossier source (`containerName`), donc la structure est conservée par défaut et modifiable. Le pipeline crée le dossier si absent. Symétrique dans les deux sens. Test pipeline `Outils/X`. **30 tests verts.** → corrige la perte de structure signalée par Vincent.

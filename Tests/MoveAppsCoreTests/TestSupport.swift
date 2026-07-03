@@ -86,6 +86,29 @@ struct FaultInjectingCopier: DirectoryCopying {
     }
 }
 
+/// An `InitScriptRunning` that records its invocations and returns a chosen exit code, so tests
+/// can assert the init script was (or wasn't) run and with which arguments — without executing a
+/// real shell script.
+actor StubInitScriptRunner: InitScriptRunning {
+    struct Call: Sendable, Hashable {
+        let directory: URL
+        let displayName: String
+        let slug: String
+    }
+
+    private(set) var calls: [Call] = []
+    private let exitCode: Int32
+
+    init(exitCode: Int32 = 0) {
+        self.exitCode = exitCode
+    }
+
+    func run(in directory: URL, displayName: String, slug: String) async -> ProcessResult {
+        calls.append(Call(directory: directory, displayName: displayName, slug: slug))
+        return ProcessResult(exitCode: exitCode, standardOutput: "", standardError: "", timedOut: false)
+    }
+}
+
 /// An `ICloudMaterializing` that never resolves; used to prove callers stay bounded.
 struct NeverResolvingMaterializer: ICloudMaterializing {
     let attempts: Int

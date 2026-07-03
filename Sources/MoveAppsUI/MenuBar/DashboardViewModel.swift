@@ -82,7 +82,7 @@ public final class DashboardViewModel {
 
     // MARK: - New project
 
-    public func createProject(named name: String, from template: ProjectTemplate, gitInit: Bool) {
+    public func createProject(named name: String, from template: ProjectTemplate, gitInit: Bool, runInitScript: Bool) {
         guard !isCreating else { return }
         isCreating = true
         lastCreation = nil
@@ -93,7 +93,8 @@ public final class DashboardViewModel {
                 named: name,
                 from: template,
                 destinationRoot: destinationRoot,
-                gitInit: gitInit
+                gitInit: gitInit,
+                runInitScript: runInitScript
             )
             self.lastCreation = result
             self.isCreating = false

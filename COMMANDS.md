@@ -18,3 +18,4 @@ Exhaustive log of every message received from Vincent in this project, in order.
 14. 2026-07-02 — "oui, crée le repo et push" (création du repo privé `vincentlauriat/MoveApps` + push de `main`)
 15. 2026-07-02 — "on le fera plus tard on avance sur l'application" (lance la Phase 3 — fenêtre principale, plan de transfert, progression, historique, drag & drop)
 16. 2026-07-03 — "commit et continue la phase 4" (commit de la Phase 3 sur `feature/phase3-main-window`, puis lancement de la Phase 4 — packaging : Info.plist/entitlements, mode local `SKIP_NOTARIZE` de `release.sh`, pipeline build+signature+DMG validé de bout en bout ; notarisation bloquée en attente d'une action manuelle de Vincent)
+17. 2026-07-03 — "enchaîne sur la Phase 5" (choix "les deux" pour le round-trip : comparaison stack detection bash/Swift validée, round-trip synthétique sur les vraies racines validé et nettoyé ; reste à faire le round-trip sur un vrai projet que Vincent doit nommer)

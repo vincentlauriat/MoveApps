@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-03 (Phase 4)
+last_updated: 2026-07-03 (Phase 5, in progress)
 ---
 
 # Project Memory — MoveApps
@@ -112,4 +112,12 @@ xcrun notarytool store-credentials "MoveApps-Notary" --apple-id "vincent@lauriat
 ```
 After that one-time setup, `./Scripts/release.sh 0.1.0` (no env var) produces a fully signed, notarized, stapled, distributable DMG. Suggest he run it himself via `! ./Scripts/release.sh 0.1.0` so he can see/approve any keychain prompt interactively, even though the dry run above suggests none should appear.
 
-Next: once notarization is unblocked, validate the full (non-skip) release, then Phase 5 (cross-validation vs `move-app.sh`, first DevApps→GitHub round trip). Still pending from Phase 2: Vincent's interactive click-through of the menu bar UI — not yet done.
+**Phase 4 committed 2026-07-03** on `feature/phase3-main-window` (commit `9cebda8`).
+
+**Phase 5 (cross-validation) started 2026-07-03**, same branch, no code changes (validation-only, uses disposable scratch test files that are never committed — written, run via `xcodebuild test`, then deleted each time). Vincent chose "both" when asked how to handle the round trip: synthetic first for safety, then a real project he nominates.
+
+- **Stack-detection cross-check**: an isolated fixture project (git+node+python markers) in the scratchpad — never under the real `~/Documents/GitHub`/`~/DevApps` — run through `move-app.sh --dry-run` (with `SRC_ROOT` env-var override, a supported override per the script's own design) and through `StackDetector` via a throwaway Swift Testing test. Both produce exactly `git node python`. Confirms the Swift port's stack detection algorithm matches the bash original bit-for-bit on a representative fixture, on top of the existing `StackDetectorTests.swift` unit coverage.
+- **Synthetic round trip on the REAL configured roots** (`RootLocations.default` = real `~/DevApps`/`~/Documents/GitHub`, not temp dirs): a disposable git repo created directly in `~/DevApps`, moved through `TransferPipeline` `.active → .archive` then `.archive → .active` for real. This is the first time the `active → archive` direction has ever executed against the actual production root paths — all 121 real prior migrations went the other way. Both legs returned `.ok`, git log and file content were byte-identical before/after, and both `TransferRecord`s correctly round-tripped through the real `TransferHistoryStore` at `~/Library/Application Support/MoveApps/history.json` (proving the Phase 3 UI's history persistence path end-to-end, not just in temp-dir unit tests) — those 2 synthetic entries were then deliberately removed from the real history file afterward so Vincent's actual transfer history stays authentic. The synthetic test project self-deletes via a `defer` block covering both possible resting locations, regardless of pass/fail.
+- **Remaining for Phase 5**: a round trip on a real, already-migrated, low-stakes project that Vincent nominates (asked, not yet answered as of this checkpoint) — the synthetic test proves the mechanics but not project-specific quirks (real venvs, real git history depth, real symlinks) the way a genuine project would.
+
+Next: once Vincent names a project, repeat the round trip against it for real (same throwaway-test pattern, same rigorous before/after verification). Then: notarization once Vincent sets up credentials (see Phase 4), and Vincent's interactive click-through of the menu bar UI (still pending from Phase 2).

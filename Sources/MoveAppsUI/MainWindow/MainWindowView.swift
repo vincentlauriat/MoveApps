@@ -14,9 +14,9 @@ struct DraggedProject: Codable, Transferable {
 }
 
 /// The main window: two columns (archive on the left, active on the right). Dragging a project
-/// from one column onto the other — or clicking the arrow on a row — prepares a transfer and
-/// opens the confirmation sheet. A live progress strip appears while a transfer runs, and the
-/// toolbar exposes the history and settings.
+/// from one column onto the other — or clicking the arrow on a row — prepares a single transfer;
+/// checking rows and using the batch bar transfers several at once. A live progress strip appears
+/// while a transfer runs, and the toolbar exposes the history and settings.
 public struct MainWindowView: View {
     @Environment(MainWindowViewModel.self) private var model
 
@@ -41,9 +41,13 @@ public struct MainWindowView: View {
                 if model.isRunning {
                     progressStrip
                         .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if !model.selection.isEmpty {
+                    batchBar
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.isRunning)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.selection)
         }
         .frame(minWidth: 640, minHeight: 420)
         .toolbar {
@@ -81,6 +85,20 @@ public struct MainWindowView: View {
                 }
             )
         }
+        .sheet(item: $model.pendingBatch) { batch in
+            BatchTransferView(
+                batch: batch,
+                existingContainers: model.destinationContainers(for: batch.to),
+                onCancel: { model.cancelBatch() },
+                onConfirm: { keepSymlink, reinstallNode, folderMode in
+                    model.confirmBatch(
+                        keepSymlink: keepSymlink,
+                        reinstallNode: reinstallNode,
+                        folderMode: folderMode
+                    )
+                }
+            )
+        }
         .sheet(isPresented: $showHistory) {
             TransferHistoryView()
         }
@@ -105,9 +123,16 @@ public struct MainWindowView: View {
         HStack(spacing: 10) {
             ProgressView().controlSize(.small)
             VStack(alignment: .leading, spacing: 1) {
-                if let name = model.activeName {
-                    Text(name)
-                        .font(.system(.callout, design: .rounded, weight: .semibold))
+                HStack(spacing: 6) {
+                    if model.batchTotal > 0 {
+                        Text("Projet \(model.batchIndex)/\(model.batchTotal)")
+                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    if let name = model.activeName {
+                        Text(name)
+                            .font(.system(.callout, design: .rounded, weight: .semibold))
+                    }
                 }
                 Text(model.currentStepText)
                     .font(.caption)
@@ -115,6 +140,34 @@ public struct MainWindowView: View {
                     .lineLimit(1)
             }
             Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .glassEffect(
+            .regular.tint(Color.accentColor.opacity(0.18)),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+    }
+
+    /// Appears when one or more projects are checked: shows the count and transfers them all to
+    /// the opposite root.
+    private var batchBar: some View {
+        let count = model.selection.count
+        let destination = model.selectionRoot.map { $0 == .active ? RootKind.archive : .active }
+        return HStack(spacing: 12) {
+            Text("\(count) projet\(count == 1 ? "" : "s") sélectionné\(count == 1 ? "" : "s")")
+                .font(.system(.callout, design: .rounded, weight: .semibold))
+            Spacer()
+            Button("Désélectionner") { model.clearSelection() }
+                .buttonStyle(.glass)
+            Button {
+                model.prepareBatchTransfer()
+            } label: {
+                Label("Transférer vers \(rootLabel(destination ?? .archive))", systemImage: "arrow.right")
+            }
+            .buttonStyle(.glassProminent)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -148,9 +201,13 @@ struct RootColumnView: View {
                             emptyState
                         } else {
                             ForEach(projects) { project in
-                                MainProjectRowView(project: project, disabled: model.isRunning) {
-                                    model.prepareTransfer(project)
-                                }
+                                MainProjectRowView(
+                                    project: project,
+                                    disabled: model.isRunning,
+                                    isSelected: model.isSelected(project),
+                                    onToggleSelect: { model.toggleSelection(project) },
+                                    action: { model.prepareTransfer(project) }
+                                )
                                 .draggable(DraggedProject(path: project.candidate.path, root: project.root))
                             }
                         }
@@ -211,18 +268,28 @@ struct RootColumnView: View {
     }
 }
 
-/// One project row in a column: name, stack tags, and an arrow that starts a transfer toward
-/// the opposite root. Rendered as its own Liquid Glass card so it reads with real relief
-/// against the column behind it.
+/// One project row in a column: a selection checkbox, name, stack tags, and an arrow that starts a
+/// single transfer toward the opposite root. Rendered as its own Liquid Glass card so it reads
+/// with real relief against the column behind it.
 struct MainProjectRowView: View {
     let project: QuickProject
     let disabled: Bool
+    let isSelected: Bool
+    let onToggleSelect: () -> Void
     let action: () -> Void
 
     @State private var isHovering = false
 
     var body: some View {
         HStack(spacing: 10) {
+            Button(action: onToggleSelect) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 17))
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+            }
+            .buttonStyle(.plain)
+            .help(isSelected ? "Désélectionner" : "Sélectionner")
+
             VStack(alignment: .leading, spacing: 5) {
                 Text(project.candidate.name)
                     .font(.system(.body, design: .rounded, weight: .semibold))
@@ -250,7 +317,10 @@ struct MainProjectRowView: View {
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .glassEffect(
+            isSelected ? .regular.tint(Color.accentColor.opacity(0.22)).interactive() : .regular.interactive(),
+            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+        )
         .scaleEffect(isHovering ? 1.01 : 1)
         .onHover { hovering in
             guard !disabled else { return }

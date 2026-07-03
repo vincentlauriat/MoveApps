@@ -22,6 +22,17 @@ public final class MainWindowViewModel {
     /// A plan built from a drag/drop or row action, awaiting confirmation in the sheet.
     public var pendingPlan: TransferPlan?
 
+    /// Checked projects for a batch transfer. Always confined to a single root (checking a project
+    /// in one column clears any checked in the other, since a batch moves one way).
+    public private(set) var selection: Set<URL> = []
+
+    /// A batch awaiting confirmation in the batch sheet.
+    public var pendingBatch: PendingBatch?
+
+    /// Progress within a running batch (0/0 when not batching), for the progress strip.
+    public private(set) var batchIndex = 0
+    public private(set) var batchTotal = 0
+
     /// Completed transfers, most recent first.
     public private(set) var history: [TransferRecord] = []
 
@@ -101,6 +112,79 @@ public final class MainWindowViewModel {
         pendingPlan = nil
     }
 
+    // MARK: - Selection & batch
+
+    public func isSelected(_ project: QuickProject) -> Bool {
+        selection.contains(project.id)
+    }
+
+    /// Toggles a project's checkbox. Since a batch only moves one direction, checking a project
+    /// in a different root than the current selection resets the selection to that root first.
+    public func toggleSelection(_ project: QuickProject) {
+        if let anySelected = selection.first,
+           let existing = projects.first(where: { $0.id == anySelected }),
+           existing.root != project.root {
+            selection.removeAll()
+        }
+        if selection.contains(project.id) {
+            selection.remove(project.id)
+        } else {
+            selection.insert(project.id)
+        }
+    }
+
+    public func clearSelection() {
+        selection.removeAll()
+    }
+
+    /// The root the current selection lives under (`nil` when nothing is selected).
+    public var selectionRoot: RootKind? {
+        guard let first = selection.first else { return nil }
+        return projects.first(where: { $0.id == first })?.root
+    }
+
+    public var selectedProjects: [QuickProject] {
+        projects.filter { selection.contains($0.id) }
+    }
+
+    /// Opens the batch confirmation sheet for the currently selected projects.
+    public func prepareBatchTransfer() {
+        guard !isRunning, let from = selectionRoot else { return }
+        let picked = selectedProjects
+        guard !picked.isEmpty else { return }
+        pendingBatch = PendingBatch(projects: picked, from: from, to: from == .active ? .archive : .active)
+    }
+
+    public func cancelBatch() {
+        pendingBatch = nil
+    }
+
+    /// Confirms a batch: builds one plan per project (each keeping its own container folder, or all
+    /// forced to `folderMode`'s folder) and runs them sequentially.
+    public func confirmBatch(keepSymlink: Bool, reinstallNode: Bool, folderMode: BatchFolderMode) {
+        guard let batch = pendingBatch, !isRunning else { return }
+        pendingBatch = nil
+        let plans = batch.projects.map { project -> TransferPlan in
+            let container: String?
+            switch folderMode {
+            case .preserveEach:
+                container = project.candidate.containerName
+            case .fixed(let fixed):
+                let cleaned = fixed?.trimmingCharacters(in: .whitespacesAndNewlines)
+                container = (cleaned?.isEmpty ?? true) ? nil : cleaned
+            }
+            return TransferPlan(
+                project: project.candidate,
+                from: batch.from,
+                to: batch.to,
+                keepSymlink: keepSymlink,
+                reinstallNode: reinstallNode,
+                destinationContainer: container
+            )
+        }
+        runBatch(plans)
+    }
+
     /// Confirms the pending plan with the chosen options and destination folder, then transfers.
     public func confirmPending(keepSymlink: Bool, reinstallNode: Bool, destinationContainer: String?) {
         guard let base = pendingPlan else { return }
@@ -147,4 +231,60 @@ public final class MainWindowViewModel {
             self.loadHistory()
         }
     }
+
+    /// Runs a batch of transfers one after another (never in parallel — the pipeline touches the
+    /// filesystem and git, and sequential keeps progress legible and failures isolated). A single
+    /// project's failure doesn't abort the rest.
+    private func runBatch(_ plans: [TransferPlan]) {
+        guard !isRunning, !plans.isEmpty else { return }
+        isRunning = true
+        batchTotal = plans.count
+        batchIndex = 0
+        lastResult = nil
+        selection.removeAll()
+
+        let locations = rootPaths.settings.locations
+
+        Task {
+            let pipeline = TransferPipeline(roots: locations)
+            for (offset, plan) in plans.enumerated() {
+                self.batchIndex = offset + 1
+                self.activeName = plan.project.name
+                self.currentStepText = "Démarrage…"
+                var finalResult: TransferResult?
+                for await step in await pipeline.run(plan) {
+                    self.currentStepText = ProjectListing.describe(step)
+                    if case .finished(let result) = step {
+                        finalResult = result
+                        self.lastResult = result
+                    }
+                }
+                if let finalResult {
+                    try? await self.historyStore.append(TransferRecord(plan: plan, result: finalResult))
+                }
+            }
+            self.isRunning = false
+            self.activeName = nil
+            self.batchIndex = 0
+            self.batchTotal = 0
+            self.refresh()
+            self.loadHistory()
+        }
+    }
+}
+
+/// A batch of projects (all from the same root) awaiting confirmation.
+public struct PendingBatch: Identifiable, Sendable {
+    public let id = UUID()
+    public let projects: [QuickProject]
+    public let from: RootKind
+    public let to: RootKind
+}
+
+/// How a batch assigns each project's destination folder.
+public enum BatchFolderMode: Hashable, Sendable {
+    /// Every project keeps its own source container folder on the destination side.
+    case preserveEach
+    /// All projects go into the same folder (`nil` = destination root).
+    case fixed(String?)
 }

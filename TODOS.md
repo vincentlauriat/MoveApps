@@ -63,7 +63,7 @@
   ```
   Nécessite un mot de passe app-specific généré sur appleid.apple.com — geste manuel, impossible à scripter. Une fois fait, `./Scripts/release.sh 0.1.0` (sans `SKIP_NOTARIZE`) produit un DMG signé + notarisé + stapled, prêt à distribuer.
 - [ ] Optionnel, non bloquant : AppIcon réel (`Assets.xcassets/AppIcon.appiconset` n'a que des slots vides) — l'app buildera et se notarisera sans, juste sans icône personnalisée
-- [x] Phase 5 (partiel) — comparaison stack detection bash vs Swift (`git node python` sur les deux), round-trip synthétique sur les vraies racines `~/DevApps`⇄`~/Documents/GitHub` (deux legs `.ok`, intégrité git + historique confirmée, nettoyage fait)
-- [ ] Phase 5 (reste) — **action requise de Vincent** : nommer un projet réel déjà migré, à faible enjeu, pour refaire le round-trip dessus en conditions réelles (le test synthétique valide la mécanique mais pas les cas particuliers d'un vrai projet — venv réel, historique git profond, symlinks)
+- [x] Phase 5 — comparaison stack detection bash vs Swift (`git node python` sur les deux), round-trip synthétique sur les vraies racines (deux legs `.ok`), round-trip réel sur `LinkManager` (choisi par Vincent) — checksums + git status identiques avant/après, venv fonctionnel
+- [x] Bug trouvé + corrigé via le round-trip réel : `VenvManager.recreate()` perdait TOUS les paquets d'un venv si un seul pin exact devenait indisponible (ex. version retirée de PyPI) ; corrigé avec un repli paquet-par-paquet + test de régression déterministe. `LinkManager` réparé manuellement puis re-vérifié avec le correctif (2 legs `.ok`, 0 avertissement)
 - [ ] Phase 5 — Cross-validation vs `move-app.sh`: `--list`/`--dry-run` comparison, and the first-ever real DevApps→GitHub→DevApps round trip (reverse direction has zero prod mileage)
 - [ ] Later (not blocking v1): private Sparkle feed for auto-update (GitHub Releases + PAT, or similar) once the app is stable

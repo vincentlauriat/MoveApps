@@ -16,8 +16,16 @@ public struct NewProjectView: View {
     @State private var name = ""
     @State private var selectedTemplate: ProjectTemplate?
     @State private var gitInit = true
+    @State private var runInitScript = true
 
     public init() {}
+
+    /// Whether the selected template ships a post-copy init script (`Scripts/bootstrap.sh`).
+    private var selectedHasInitScript: Bool {
+        guard let template = selectedTemplate else { return false }
+        return FileManager.default.fileExists(
+            atPath: template.path.appendingPathComponent(templateInitScriptRelativePath).path)
+    }
 
     public var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -48,7 +56,8 @@ public struct NewProjectView: View {
 
                 Button("Créer") {
                     if let template = selectedTemplate {
-                        model.createProject(named: name, from: template, gitInit: gitInit)
+                        model.createProject(named: name, from: template,
+                                            gitInit: gitInit, runInitScript: runInitScript)
                     }
                 }
                 .keyboardShortcut(.defaultAction)
@@ -93,8 +102,18 @@ public struct NewProjectView: View {
                     .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
 
-            Toggle("Initialiser un dépôt git", isOn: $gitInit)
-                .toggleStyle(.switch)
+            if selectedHasInitScript {
+                VStack(alignment: .leading, spacing: 2) {
+                    Toggle("Exécuter le script d'initialisation du modèle", isOn: $runInitScript)
+                        .toggleStyle(.switch)
+                    Text("Renomme le projet, régénère le .xcodeproj et initialise git.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Toggle("Initialiser un dépôt git", isOn: $gitInit)
+                    .toggleStyle(.switch)
+            }
 
             Text("Créé sous \(rootPaths.displayPath(for: .active))")
                 .font(.caption2)
@@ -125,9 +144,18 @@ public struct NewProjectView: View {
     private func resultBanner(_ result: ProjectCreationResult) -> some View {
         let (icon, color, text): (String, Color, String) = {
             switch result {
-            case .created(let url, let gitInitialized):
-                return ("checkmark.circle.fill", .green,
-                        "Projet créé : \(url.lastPathComponent)\(gitInitialized ? " (git initialisé)" : "")")
+            case .created(let url, let gitInitialized, let initScript):
+                switch initScript {
+                case .ran:
+                    return ("checkmark.circle.fill", .green,
+                            "Projet créé et initialisé : \(url.lastPathComponent)")
+                case .failed:
+                    return ("exclamationmark.triangle.fill", .orange,
+                            "Projet créé : \(url.lastPathComponent), mais le script d'initialisation a échoué. Lance-le à la main.")
+                case .skipped, .none:
+                    return ("checkmark.circle.fill", .green,
+                            "Projet créé : \(url.lastPathComponent)\(gitInitialized ? " (git initialisé)" : "")")
+                }
             case .destinationExists(let url):
                 return ("exclamationmark.triangle.fill", .orange,
                         "Un élément nommé « \(url.lastPathComponent) » existe déjà.")

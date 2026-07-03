@@ -39,14 +39,104 @@ struct TemplateServiceTests {
             gitInit: true
         )
 
-        guard case .created(let url, let gitInitialized) = result else {
+        guard case .created(let url, let gitInitialized, let initScript) = result else {
             Issue.record("expected .created, got \(result)")
             return
         }
         #expect(url == destinationRoot.appendingPathComponent("MyNewApp"))
         #expect(FileManager.default.fileExists(atPath: url.appendingPathComponent("README.md").path))
         #expect(gitInitialized)
+        #expect(initScript == .none)   // this template ships no bootstrap.sh
         #expect(await GitService().isRepository(url))
+    }
+
+    // MARK: - Init script
+
+    /// Builds a templates root containing one template that ships a `Scripts/bootstrap.sh`.
+    private func templateWithScript(named name: String = "SwiftApp") -> (root: URL, cleanup: () -> Void) {
+        let base = Fixture.makeTempDir()
+        let templatesRoot = base.appendingPathComponent("templates")
+        Fixture.write("# seed", to: templatesRoot.appendingPathComponent("\(name)/README.md"))
+        Fixture.write("#!/usr/bin/env bash\nexit 0\n",
+                      to: templatesRoot.appendingPathComponent("\(name)/\(templateInitScriptRelativePath)"))
+        return (templatesRoot, { try? FileManager.default.removeItem(at: base) })
+    }
+
+    @Test("runs the init script when the template ships one and the caller opts in")
+    func runsInitScript() async {
+        let (templatesRoot, cleanup) = templateWithScript()
+        defer { cleanup() }
+        let destinationRoot = templatesRoot.deletingLastPathComponent().appendingPathComponent("active")
+        let stub = StubInitScriptRunner()
+
+        let template = TemplateService().templates(in: templatesRoot).first!
+        let result = await TemplateService(scriptRunner: stub).createProject(
+            named: "My New App",
+            from: template,
+            destinationRoot: destinationRoot,
+            gitInit: false,
+            runInitScript: true
+        )
+
+        guard case .created(_, _, let initScript) = result else {
+            Issue.record("expected .created, got \(result)")
+            return
+        }
+        #expect(initScript == .ran)
+        let calls = await stub.calls
+        #expect(calls.count == 1)
+        #expect(calls.first?.displayName == "My New App")
+        #expect(calls.first?.slug == "MyNewApp")   // spaces stripped
+        #expect(calls.first?.directory == destinationRoot.appendingPathComponent("My New App"))
+    }
+
+    @Test("does not run the init script when the caller opts out")
+    func skipsInitScript() async {
+        let (templatesRoot, cleanup) = templateWithScript()
+        defer { cleanup() }
+        let destinationRoot = templatesRoot.deletingLastPathComponent().appendingPathComponent("active")
+        let stub = StubInitScriptRunner()
+
+        let template = TemplateService().templates(in: templatesRoot).first!
+        let result = await TemplateService(scriptRunner: stub).createProject(
+            named: "MyNewApp",
+            from: template,
+            destinationRoot: destinationRoot,
+            gitInit: false,
+            runInitScript: false
+        )
+
+        guard case .created(_, _, let initScript) = result else {
+            Issue.record("expected .created, got \(result)")
+            return
+        }
+        #expect(initScript == .skipped)
+        #expect(await stub.calls.isEmpty)
+    }
+
+    @Test("reports .failed when the init script exits non-zero")
+    func reportsFailedScript() async {
+        let (templatesRoot, cleanup) = templateWithScript()
+        defer { cleanup() }
+        let destinationRoot = templatesRoot.deletingLastPathComponent().appendingPathComponent("active")
+        let stub = StubInitScriptRunner(exitCode: 1)
+
+        let template = TemplateService().templates(in: templatesRoot).first!
+        let result = await TemplateService(scriptRunner: stub).createProject(
+            named: "MyNewApp",
+            from: template,
+            destinationRoot: destinationRoot,
+            gitInit: false,
+            runInitScript: true
+        )
+
+        guard case .created(_, _, let initScript) = result else {
+            Issue.record("expected .created, got \(result)")
+            return
+        }
+        #expect(initScript == .failed)
+        // The copy is still on disk even though the script failed.
+        #expect(FileManager.default.fileExists(atPath: destinationRoot.appendingPathComponent("MyNewApp").path))
     }
 
     @Test("refuses to overwrite an existing destination")

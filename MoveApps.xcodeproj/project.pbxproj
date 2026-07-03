@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		075D154B567575637FFAFE67 /* InitScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DCF0F1A24FB1EA3A3FFABD2 /* InitScriptRunner.swift */; };
 		0D58E4BDB3394D96EC85B29F /* MenuBarDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD8DCB6E0FBD7A85657A92C /* MenuBarDashboardView.swift */; };
 		12ECDF1C612511470B79CC6E /* StackDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB121AC30D21059A7198683 /* StackDetectorTests.swift */; };
 		146299408CF39A0A0C69E72D /* RootPathsSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B9BFFBD8503D1C39248B52 /* RootPathsSettings.swift */; };
@@ -142,6 +143,7 @@
 		17A9D164BC9FF377C6D7484C /* MoveApps.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MoveApps.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		18B5A072FC56952F69AF2875 /* DiskUsageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiskUsageTests.swift; sourceTree = "<group>"; };
 		1AD8DCB6E0FBD7A85657A92C /* MenuBarDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarDashboardView.swift; sourceTree = "<group>"; };
+		1DCF0F1A24FB1EA3A3FFABD2 /* InitScriptRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InitScriptRunner.swift; sourceTree = "<group>"; };
 		24487703A74D5D21E9BE1F6B /* BatchTransferView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchTransferView.swift; sourceTree = "<group>"; };
 		252C966A9B6D3A56AF38D1AF /* TransferPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferPipeline.swift; sourceTree = "<group>"; };
 		2AB121AC30D21059A7198683 /* StackDetectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackDetectorTests.swift; sourceTree = "<group>"; };
@@ -449,6 +451,7 @@
 				1648C2A95D19D64B01168D8E /* DiskUsage.swift */,
 				9239C0B1F7878177AFDD0E4A /* GitService.swift */,
 				2C398EE1582E98F28D10D2F3 /* ICloudMaterializer.swift */,
+				1DCF0F1A24FB1EA3A3FFABD2 /* InitScriptRunner.swift */,
 				81BD634D7BE10426B3553BA5 /* NodeModulesInstaller.swift */,
 				DCFEF92B92BAFDE5DB09CB98 /* ProjectScanner.swift */,
 				6B975EE12429A4C92C84EDF0 /* ResidualPathScanner.swift */,
@@ -671,6 +674,7 @@
 				ADD210CA2A97D9373ADC77E8 /* GitSnapshot.swift in Sources */,
 				54FCB1C11F67BA377A9830F6 /* GitStatusEntry.swift in Sources */,
 				B1DE0B33CC5C28B0167A20F4 /* ICloudMaterializer.swift in Sources */,
+				075D154B567575637FFAFE67 /* InitScriptRunner.swift in Sources */,
 				CC45C25E3E5D5495B7585BD3 /* MoveAppsCore.swift in Sources */,
 				411A7EB4337B64A774EA1478 /* NodeModulesInstaller.swift in Sources */,
 				C72C5A5114E3105DFC270E36 /* ProcessRunner.swift in Sources */,

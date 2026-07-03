@@ -25,6 +25,11 @@ public final class QuickPickViewModel {
     public private(set) var currentStepText = ""
     public private(set) var lastResult: TransferResult?
 
+    /// A plan built from a row action, awaiting confirmation in the sheet — mirrors
+    /// `MainWindowViewModel.pendingPlan` so both surfaces share the same confirm-before-transfer
+    /// choreography instead of the menu bar transferring instantly on tap.
+    public var pendingPlan: TransferPlan?
+
     private let rootPaths: RootPathsController
 
     public init(rootPaths: RootPathsController) {
@@ -41,14 +46,41 @@ public final class QuickPickViewModel {
         }
     }
 
-    public func transfer(_ project: QuickProject) {
+    // MARK: - Preparing a transfer
+
+    /// Builds a default plan (no options) for the given project and opens the confirmation sheet.
+    public func prepareTransfer(_ project: QuickProject) {
+        guard !isRunning else { return }
+        pendingPlan = TransferPlan(project: project.candidate, from: project.root, to: project.destination)
+    }
+
+    public func cancelPending() {
+        pendingPlan = nil
+    }
+
+    /// Confirms the pending plan with the chosen options and starts the transfer.
+    public func confirmPending(keepSymlink: Bool, reinstallNode: Bool) {
+        guard let base = pendingPlan else { return }
+        pendingPlan = nil
+        let plan = TransferPlan(
+            project: base.project,
+            from: base.from,
+            to: base.to,
+            keepSymlink: keepSymlink,
+            reinstallNode: reinstallNode
+        )
+        run(plan)
+    }
+
+    // MARK: - Running
+
+    private func run(_ plan: TransferPlan) {
         guard !isRunning else { return }
         isRunning = true
-        activeName = project.candidate.name
+        activeName = plan.project.name
         currentStepText = "Démarrage…"
         lastResult = nil
 
-        let plan = TransferPlan(project: project.candidate, from: project.root, to: project.destination)
         let locations = rootPaths.settings.locations
 
         Task {
@@ -68,25 +100,13 @@ public final class QuickPickViewModel {
     // MARK: - Scanning (off the main actor)
 
     nonisolated static func scanSync(_ locations: RootLocations) -> [QuickProject] {
-        let detector = StackDetector()
-        let fileManager = FileManager.default
+        let scanner = ProjectScanner()
         var result: [QuickProject] = []
 
         for kind in RootKind.allCases {
             let root = locations.url(for: kind)
-            guard let entries = try? fileManager.contentsOfDirectory(
-                at: root,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            ) else { continue }
-
-            for entry in entries {
-                let isDirectory = (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
-                guard isDirectory else { continue }
-                let tags = detector.detect(at: entry)
-                let candidate = ProjectCandidate(name: entry.lastPathComponent, path: entry, stackTags: tags)
-                result.append(QuickProject(candidate: candidate, root: kind))
-            }
+            let candidates = scanner.scan(root)
+            result.append(contentsOf: candidates.map { QuickProject(candidate: $0, root: kind) })
         }
 
         return result.sorted {

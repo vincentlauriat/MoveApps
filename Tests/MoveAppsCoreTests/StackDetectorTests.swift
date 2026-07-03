@@ -37,4 +37,27 @@ struct StackDetectorTests {
         #expect(tags.contains(.xcode))
         #expect(tags.contains(.rust))
     }
+
+    @Test("isProjectRoot requires a marker directly at the root, not just nested within depth 2")
+    func isProjectRootIsStricterThanDetect() {
+        let root = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        // A marker two levels down makes `detect` pick up the tag, but does NOT make this
+        // folder itself a project — it's a container (e.g. "Gatsby" holding several sub-repos).
+        Fixture.write("[build-system]", to: root.appendingPathComponent("Sub/pyproject.toml"))
+        #expect(StackDetector().detect(at: root).contains(.python))
+        #expect(!StackDetector().isProjectRoot(at: root))
+
+        // The subfolder itself, which has the marker directly at its root, IS a project.
+        #expect(StackDetector().isProjectRoot(at: root.appendingPathComponent("Sub")))
+    }
+
+    @Test("isProjectRoot is true for a folder that is itself a git repo")
+    func isProjectRootDetectsGit() {
+        let root = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+        try? FileManager.default.createDirectory(at: root.appendingPathComponent(".git"), withIntermediateDirectories: true)
+        #expect(StackDetector().isProjectRoot(at: root))
+    }
 }

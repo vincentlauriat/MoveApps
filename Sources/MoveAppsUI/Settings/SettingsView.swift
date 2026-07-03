@@ -1,18 +1,22 @@
 import SwiftUI
+import AppKit
 import ServiceManagement
 import MoveAppsCore
 
 public struct SettingsView: View {
     @Environment(RootPathsController.self) private var rootPaths
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    @AppStorage("showInDock") private var showInDock = true
 
     public init() {}
 
     public var body: some View {
         Form {
-            Section("Racines") {
+            Section {
                 rootRow(.active)
                 rootRow(.archive)
+            } header: {
+                Label("Racines", systemImage: "arrow.left.arrow.right")
             }
 
             Section("Général") {
@@ -20,31 +24,43 @@ public struct SettingsView: View {
                     .onChange(of: launchAtLogin) { _, newValue in
                         setLaunchAtLogin(newValue)
                     }
+                Toggle("Afficher dans le Dock", isOn: $showInDock)
+                    .onChange(of: showInDock) { _, newValue in
+                        NSApp.setActivationPolicy(newValue ? .regular : .accessory)
+                    }
             }
 
             Section("À propos") {
-                HStack {
-                    Text("MoveApps").font(.headline)
+                HStack(spacing: 10) {
+                    Image(systemName: "arrow.left.arrow.right.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(Color.accentColor)
+                        .symbolRenderingMode(.hierarchical)
+                    Text("MoveApps")
+                        .font(.system(.headline, design: .rounded, weight: .bold))
                     Spacer()
                     Text(version).foregroundStyle(.secondary)
                 }
+                .padding(.vertical, 2)
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 340)
+        .frame(width: 420, height: 360)
     }
 
     private func rootRow(_ kind: RootKind) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(title(kind)).bold()
+                Label(title(kind), systemImage: kind == .archive ? "archivebox.fill" : "bolt.fill")
+                    .font(.system(.body, design: .rounded, weight: .semibold))
                 Spacer()
                 Button("Choisir…") {
                     rootPaths.chooseDirectory(for: kind)
                 }
+                .buttonStyle(.glass)
             }
             Text(rootPaths.displayPath(for: kind))
-                .font(.caption)
+                .font(.system(.caption, design: .monospaced))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
                 .truncationMode(.middle)
@@ -54,6 +70,7 @@ public struct SettingsView: View {
                     .foregroundStyle(.orange)
             }
         }
+        .padding(.vertical, 3)
     }
 
     private func title(_ kind: RootKind) -> String {

@@ -4,6 +4,7 @@ import MoveAppsUI
 
 @main
 struct MoveAppsApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var rootPaths: RootPathsController
     @State private var quickPick: QuickPickViewModel
     @State private var mainWindow: MainWindowViewModel

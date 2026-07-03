@@ -19,6 +19,14 @@ public struct SettingsView: View {
                 Label("Racines", systemImage: "arrow.left.arrow.right")
             }
 
+            Section {
+                templatesRow
+            } header: {
+                Label("Modèles", systemImage: "square.stack.3d.up")
+            } footer: {
+                Text("Dossier contenant un sous-dossier par modèle de projet, utilisé par « Nouveau projet ».")
+            }
+
             Section("Général") {
                 Toggle("Lancer au démarrage", isOn: $launchAtLogin)
                     .onChange(of: launchAtLogin) { _, newValue in
@@ -69,6 +77,26 @@ public struct SettingsView: View {
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }
+        }
+        .padding(.vertical, 3)
+    }
+
+    private var templatesRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Label("Dossier de modèles", systemImage: "square.stack.3d.up.fill")
+                    .font(.system(.body, design: .rounded, weight: .semibold))
+                Spacer()
+                Button("Choisir…") {
+                    rootPaths.chooseTemplatesDirectory()
+                }
+                .buttonStyle(.glass)
+            }
+            Text(rootPaths.displayTemplatesPath)
+                .font(.system(.caption, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
         }
         .padding(.vertical, 3)
     }

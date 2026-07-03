@@ -33,13 +33,24 @@ public struct RootLocations: Sendable, Hashable {
 public final class RootPathsSettings {
     public var activeURL: URL
     public var archiveURL: URL
+    /// Folder holding project templates (one subfolder per template). Not a transfer endpoint —
+    /// deliberately kept out of `RootKind` so it never leaks into the bidirectional transfer
+    /// logic — only a source for "new project from template". Defaults to `~/DevApps/.templates`.
+    public var templatesURL: URL
 
     public init(
         activeURL: URL = RootPathsSettings.defaultURL(for: .active),
-        archiveURL: URL = RootPathsSettings.defaultURL(for: .archive)
+        archiveURL: URL = RootPathsSettings.defaultURL(for: .archive),
+        templatesURL: URL = RootPathsSettings.defaultTemplatesURL()
     ) {
         self.activeURL = activeURL
         self.archiveURL = archiveURL
+        self.templatesURL = templatesURL
+    }
+
+    public static func defaultTemplatesURL() -> URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("DevApps/.templates", isDirectory: true)
     }
 
     public func url(for kind: RootKind) -> URL {

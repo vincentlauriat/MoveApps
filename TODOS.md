@@ -70,9 +70,11 @@
 - [x] **Cinématique archiver/désarchiver unifiée** : la popup barre de menu ne transfère plus instantanément — elle ouvre désormais la même sheet de confirmation `TransferPlanView` que la fenêtre principale (rendue agnostique du view model via closures `onCancel`/`onConfirm`). `QuickPickViewModel` a gagné le flux `pendingPlan`/`prepareTransfer`/`confirmPending`/`cancelPending`.
 - [x] **Popup en sections Actif/Archive** au lieu d'une liste plate mélangée (chaque section avec son compteur).
 
-## MoveApps.app — refonte popup en tableau de bord (2026-07-03, à faire)
-- [ ] Transformer la popup barre de menu en **tableau de bord pur** : retirer la liste de projets et le transfert direct (tout ça reste dans la fenêtre principale). Afficher : compteurs Actif/Archive, dernier transfert (nom + date + statut), espace disque des deux racines.
-- [ ] Bouton **« Nouveau projet »** depuis un **dossier de templates perso** (3e root type `templates`, ex. `~/DevApps/.templates/`) : lister les sous-dossiers-templates, copier le choisi (via `DittoCopier`) vers un projet nommé par Vincent sous la racine Actif, `git init` optionnel.
-- [ ] Bouton **« Ouvrir MoveApps »** vers la fenêtre principale (existe déjà, à conserver dans le nouveau layout).
-- [ ] Nouveau service `DiskUsage` (`MoveAppsCore`) pour l'espace disque des racines (aucun n'existe encore).
-- [ ] Nouveau service de création de projet depuis template (`MoveAppsCore`) + réglage du dossier de templates dans Settings.
+## MoveApps.app — refonte popup en tableau de bord (2026-07-03, fait)
+- [x] Popup barre de menu transformée en **tableau de bord pur** (`MenuBarDashboardView`) : cartes par racine (compteurs Actif/Archive + espace disque), carte « dernier transfert » (nom/direction/date/statut), boutons « Nouveau projet » et « Ouvrir MoveApps ». Plus de liste ni de transfert dans la popup.
+- [x] Bouton **« Nouveau projet »** depuis un **dossier de templates perso** (`templatesURL` dans `RootPathsSettings`, défaut `~/DevApps/.templates`, hors `RootKind`) : `TemplateService` liste les sous-dossiers-templates et copie le choisi via `DittoCopier` sous la racine Actif, `git init` optionnel. Sheet `NewProjectView`. Refuse noms vides/avec `/` et n'écrase jamais une destination existante.
+- [x] Bouton **« Ouvrir MoveApps »** conservé dans le nouveau layout.
+- [x] Service `DiskUsage` (`MoveAppsCore`, `du -sk`) + `ByteFormat`. Tests `DiskUsageTests`.
+- [x] `TemplateService` + `ProjectTemplate` + `GitService.initRepository` + réglage du dossier de modèles dans Settings. Tests `TemplateServiceTests`. **29 tests / 11 suites verts, BUILD SUCCEEDED.**
+- [x] `QuickPickViewModel` retiré → `ProjectListing` (statics `scanSync`/`describe` + `QuickProject`). Icône barre de menu pilotée par `mainWindow.isRunning`.
+- [ ] **À valider visuellement par Vincent** : rendu du tableau de bord + flux « Nouveau projet » (pas d'accès écran ici).

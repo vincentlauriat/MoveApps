@@ -6,9 +6,9 @@ import MoveAppsCore
 /// plan awaiting confirmation, runs one transfer at a time through `TransferPipeline`, and
 /// persists each completed transfer to the history store.
 ///
-/// Independent from `QuickPickViewModel` — it reuses that type's static scan/description
-/// helpers but shares no mutable state, so the menu bar and the main window can each run a
-/// transfer without interfering.
+/// Reuses `ProjectListing`'s stateless scan/description helpers but owns all its own transfer
+/// state — the main window is now the only surface that runs transfers (the menu bar became a
+/// read-only dashboard).
 @MainActor
 @Observable
 public final class MainWindowViewModel {
@@ -58,7 +58,7 @@ public final class MainWindowViewModel {
         let locations = rootPaths.settings.locations
         isScanning = true
         Task {
-            let scanned = await Task.detached { QuickPickViewModel.scanSync(locations) }.value
+            let scanned = await Task.detached { ProjectListing.scanSync(locations) }.value
             self.projects = scanned
             self.isScanning = false
         }
@@ -118,7 +118,7 @@ public final class MainWindowViewModel {
             let pipeline = TransferPipeline(roots: locations)
             var finalResult: TransferResult?
             for await step in await pipeline.run(plan) {
-                self.currentStepText = QuickPickViewModel.describe(step)
+                self.currentStepText = ProjectListing.describe(step)
                 if case .finished(let result) = step {
                     finalResult = result
                     self.lastResult = result

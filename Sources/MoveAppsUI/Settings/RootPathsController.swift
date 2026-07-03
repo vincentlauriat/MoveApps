@@ -20,40 +20,63 @@ public final class RootPathsController {
     /// "to reconfigure" hint and falls back to the default path rather than crashing.
     public private(set) var rootsNeedingReconfiguration: Set<RootKind> = []
 
+    /// The templates folder isn't a `RootKind` (not a transfer endpoint), so it gets its own
+    /// bookmark slot alongside the two roots.
+    private let templatesKey = "rootBookmark.templates"
+
     public init() {
         self.settings = RootPathsSettings()
         for kind in RootKind.allCases {
             resolveStoredBookmark(for: kind)
         }
+        resolveStoredTemplatesBookmark()
     }
 
     // MARK: - Display
 
     public func displayPath(for kind: RootKind) -> String {
-        (settings.url(for: kind).path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath
+        abbreviate(settings.url(for: kind))
+    }
+
+    public var displayTemplatesPath: String {
+        abbreviate(settings.templatesURL)
     }
 
     public func needsReconfiguration(_ kind: RootKind) -> Bool {
         rootsNeedingReconfiguration.contains(kind)
     }
 
+    private func abbreviate(_ url: URL) -> String {
+        (url.path(percentEncoded: false) as NSString).abbreviatingWithTildeInPath
+    }
+
     // MARK: - Picking
 
     /// Presents an `NSOpenPanel` to choose a directory for the given root and persists it.
     public func chooseDirectory(for kind: RootKind) {
+        guard let url = pickDirectory(startingAt: settings.url(for: kind)) else { return }
+        apply(url: url, for: kind)
+        storeBookmark(for: url, key: defaultsKey(for: kind))
+        rootsNeedingReconfiguration.remove(kind)
+    }
+
+    /// Presents an `NSOpenPanel` to choose the templates folder and persists it.
+    public func chooseTemplatesDirectory() {
+        guard let url = pickDirectory(startingAt: settings.templatesURL) else { return }
+        settings.templatesURL = url
+        storeBookmark(for: url, key: templatesKey)
+    }
+
+    private func pickDirectory(startingAt start: URL) -> URL? {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         panel.allowsMultipleSelection = false
         panel.canCreateDirectories = true
         panel.prompt = "Choisir"
-        panel.directoryURL = settings.url(for: kind)
-
-        guard panel.runModal() == .OK, let url = panel.url else { return }
-
-        apply(url: url, for: kind)
-        storeBookmark(for: url, kind: kind)
-        rootsNeedingReconfiguration.remove(kind)
+        panel.directoryURL = start
+        guard panel.runModal() == .OK else { return nil }
+        return panel.url
     }
 
     // MARK: - Persistence
@@ -67,9 +90,9 @@ public final class RootPathsController {
         }
     }
 
-    private func storeBookmark(for url: URL, kind: RootKind) {
+    private func storeBookmark(for url: URL, key: String) {
         guard let data = makeBookmark(for: url) else { return }
-        UserDefaults.standard.set(data, forKey: defaultsKey(for: kind))
+        UserDefaults.standard.set(data, forKey: key)
     }
 
     private func resolveStoredBookmark(for kind: RootKind) {
@@ -91,6 +114,18 @@ public final class RootPathsController {
             } else {
                 rootsNeedingReconfiguration.insert(kind)
             }
+        }
+    }
+
+    private func resolveStoredTemplatesBookmark() {
+        guard let data = UserDefaults.standard.data(forKey: templatesKey),
+              let (url, isStale) = resolveBookmark(data) else {
+            return // never configured or unresolvable — keep the default.
+        }
+        _ = url.startAccessingSecurityScopedResource()
+        settings.templatesURL = url
+        if isStale, let refreshed = makeBookmark(for: url) {
+            UserDefaults.standard.set(refreshed, forKey: templatesKey)
         }
     }
 

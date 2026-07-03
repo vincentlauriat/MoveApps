@@ -140,3 +140,16 @@
 
 ### Validation (UX pass 2)
 - `ProjectScannerTests` extended to assert `containerName` (`"Gatsby"` for unpacked sub-projects, `nil` for a top-level project and for the stray fallback folder). Full `MoveAppsCoreTests` re-run: `21/21`, 9 suites, `TEST SUCCEEDED`; app rebuild `BUILD SUCCEEDED`.
+
+### Added (menu-bar dashboard refactor, 2026-07-03)
+- Menu-bar popup rebuilt as a read-only **dashboard** (`MenuBarDashboardView` replacing `MenuBarQuickPickView`): per-root cards (Actif/Archive project counts + disk usage), a "last transfer" card (name / direction / date / status), and two actions — **Nouveau projet** and **Ouvrir MoveApps**. No project list or in-popup transfer anymore; transfers live only in the main window.
+- `DiskUsage` (MoveAppsCore) — actor measuring a directory's on-disk size via `du -sk` (through `ProcessRunner`, 60s timeout); `ByteFormat` helper for localized byte strings.
+- `ProjectTemplate` model + `TemplateService` (MoveAppsCore) — lists templates (direct subfolders of a templates root) and creates a new project by copying a chosen template (via `DittoCopier`) under the Active root, with optional `git init`. `GitService.initRepository` added. Refuses empty/path-bearing names and never overwrites an existing destination.
+- `RootPathsSettings.templatesURL` (default `~/DevApps/.templates`) — deliberately **not** a `RootKind` (never a transfer endpoint). `RootPathsController` gained its own bookmark slot + `chooseTemplatesDirectory`; Settings gained a "Modèles" section with a folder picker.
+- `NewProjectView` sheet (template picker + name + git toggle + result banner; hint to configure a templates folder when none exist). `DashboardViewModel` drives the dashboard (counts, async disk measurement, read-only history for last transfer, project creation).
+
+### Changed (dashboard refactor)
+- `QuickPickViewModel` retired: its stateless helpers (`scanSync`, `describe`) and the `QuickProject` struct moved to a new `ProjectListing` enum; `MainWindowViewModel` updated to call `ProjectListing.*`. The menu-bar icon busy state now reflects `mainWindow.isRunning` (transfers no longer originate from the menu bar).
+
+### Validation (dashboard refactor)
+- New Core tests: `TemplateServiceTests` (list/sort, missing root, create+git-init, refuse-overwrite, invalid-name) and `DiskUsageTests` (measures content, nil for missing path, locale-agnostic formatting). Full suite: **29 tests / 11 suites, `TEST SUCCEEDED`**; full app `BUILD SUCCEEDED`. Visual rendering of the dashboard to be confirmed by Vincent (no screen access here).

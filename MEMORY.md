@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-03 (post-launch UX fixes)
+last_updated: 2026-07-03 (menu-bar dashboard refactor)
 ---
 
 # Project Memory — MoveApps
@@ -156,3 +156,16 @@ Result (agent's own report, not yet visually verified by me — no screen access
 **Independently re-verified by me** (not just trusting the agent): `xcodebuild -scheme MoveApps -configuration Debug build` → `BUILD SUCCEEDED`, zero warnings; `xcodebuild test -scheme MoveAppsCoreTests` → 21/21 tests, 9 suites, green (confirms `MoveAppsCore` wasn't touched/broken). **The actual visual rendering has NOT been seen by anyone yet in this session** — genuinely needs Vincent's own eyes once he opens the freshly rebuilt app (`./Scripts/build.sh run`).
 
 All three fixes are on the working tree, not yet committed (as of this memory update) — see `TODOS.md` for the up-to-date checklist.
+
+## Menu-bar dashboard refactor (2026-07-03) — Vincent found the popup pointless as a list
+
+After the pass above, Vincent re-tested visually and gave two rounds of feedback:
+- **UX pass 2** (committed `ee984ff` on branch `feature/ux-container-hierarchy-and-confirm`): container-folder hierarchy now visible as a discreet `folder` subtitle (new `ProjectCandidate.containerName`, filled by `ProjectScanner`), menu-bar popup transfers now go through the same `TransferPlanView` confirmation sheet as the main window (made view-model-agnostic via `onCancel`/`onConfirm` closures), popup split into per-root Actif/Archive sections. That commit also bundled the previous session's still-uncommitted post-launch work (Dock toggle, ProjectScanner, Liquid Glass, StackTagStyle).
+- **Dashboard refactor** (branch `feature/menubar-dashboard`, current work): Vincent said the popup-as-a-project-list was pointless — he wanted *data* + a way to *create a new project from a template* + a button to open the transfer window. Chosen shape: **tableau de bord pur** (no list, no in-popup transfer — those live only in the main window now).
+
+Key decisions / structure of the dashboard refactor:
+- Templates are **not** a `RootKind`. Deliberately kept out of the bidirectional transfer enum (never a transfer endpoint) — added as a separate `RootPathsSettings.templatesURL` (default `~/DevApps/.templates`) with its own bookmark slot in `RootPathsController` (`chooseTemplatesDirectory`, key `rootBookmark.templates`). Avoids polluting every `switch RootKind` and the transfer pipeline.
+- New Core services: `DiskUsage` (actor, `du -sk` via `ProcessRunner` → bytes; `ByteFormat` helper — note `ByteCountFormatter` renders "Mo/Go" on a French-locale machine, so tests must be locale-agnostic, don't assert "MB"), `TemplateService` (actor; `templates(in:)` is `nonisolated` — pure FS read; `createProject` copies via `DittoCopier`, refuses empty/`/` names, never overwrites, optional `git init` via new `GitService.initRepository`), `ProjectTemplate` model.
+- `QuickPickViewModel` was retired: it had become just static helpers once the menu bar stopped transferring. Its `scanSync`/`describe` statics + the `QuickProject` struct moved to a new `ProjectListing` enum (`Sources/MoveAppsUI/MenuBar/ProjectListing.swift`); `MainWindowViewModel` calls `ProjectListing.*`. The menu-bar icon busy state now reads `mainWindow.isRunning`.
+- New UI: `DashboardViewModel` (counts, async disk measurement kicked off separately so `du` doesn't stall the fast stats, read-only 2nd `TransferHistoryStore` instance for "last transfer" — safe because it only ever `all()`s, never `append`s), `MenuBarDashboardView`, `NewProjectView` sheet, Settings "Modèles" section.
+- Verified: **29 tests / 11 suites green** (8 new: `TemplateServiceTests` + `DiskUsageTests`), full app `BUILD SUCCEEDED`, app relaunched. **Dashboard visual rendering + the new-project flow are NOT yet visually confirmed** — Vincent to check on screen. Not yet committed (as of this update).

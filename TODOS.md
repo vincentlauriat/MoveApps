@@ -46,24 +46,16 @@
 - [ ] Not yet exercised in practice: the `.icloud` stub-file materialization path (no stub files existed at last scan) — worth watching the first time it actually triggers, though now moot since the rollout is done
 - [ ] Optional: clean up the 3 leftover non-project files in `~/Documents/Github` (`CLAUDE.md`, `CommitTousLesDossiers.sh`, `MetsAJourLesGIT.sh`) if that folder should be fully retired
 
-## MoveApps.app — housekeeping (not urgent)
-- [ ] Commit + push the Phase 3 work on `feature/phase3-main-window` and merge to `main` when Vincent is ready (deliberately left uncommitted per his instruction to keep moving on the app first)
-- [ ] Update doc files' commit itself is also pending (`COMMANDS.md`/`TODOS.md` edits from the repo-creation step are still uncommitted on `main`)
-
 ## MoveApps.app (SwiftUI native) — in progress
 - [x] Plan approved (`~/.claude/plans/zesty-discovering-alpaca.md`) — menu bar + main window, native Swift reimplementation, bidirectional, private GitHub repo
 - [x] Phase 0 — XcodeGen scaffolding, `git init`, Scripts, doc sync. Debug build + smoke test green.
 - [x] Repo privé `vincentlauriat/MoveApps` créé sur GitHub, `origin` configuré, `main` poussée (3 commits) — https://github.com/vincentlauriat/MoveApps
 - [x] Phase 1 — Core logic (`MoveAppsCore`) + Swift Testing suite, including the `onyx` ditto-data-loss fault-injection test (17 tests / 8 suites, independently re-verified green)
 - [x] Phase 2 — Menu bar UI (`MenuBarExtra`, Settings with root pickers + login item) — build green, tests untouched, **needs Vincent's interactive click-through** (agent had no screen/Accessibility access to verify visually)
-- [x] Phase 3 — Main window UI (two-column view, transfer plan/progress, history, drag & drop) — committed on `feature/phase3-main-window` (`4cd5041`), not yet merged to `main`/pushed
-- [ ] Phase 4 — `Scripts/release.sh` full pipeline (codesign/notarize/DMG). Build+codesign+DMG steps validated end-to-end via `SKIP_NOTARIZE=1` dry run (2026-07-03), independently re-verified (`codesign --verify --deep --strict`, `spctl -a -t exec` both pass). **Blocked on notarization credentials — action requise de Vincent** :
-  ```
-  xcrun notarytool store-credentials "MoveApps-Notary" --apple-id "vincent@lauriat.fr" --team-id "KFLACS69T9"
-  ```
-  Nécessite un mot de passe app-specific généré sur appleid.apple.com — geste manuel, impossible à scripter. Une fois fait, `./Scripts/release.sh 0.1.0` (sans `SKIP_NOTARIZE`) produit un DMG signé + notarisé + stapled, prêt à distribuer.
-- [ ] Optionnel, non bloquant : AppIcon réel (`Assets.xcassets/AppIcon.appiconset` n'a que des slots vides) — l'app buildera et se notarisera sans, juste sans icône personnalisée
+- [x] Phase 3 — Main window UI (two-column view, transfer plan/progress, history, drag & drop) — mergé sur `main` et poussé (`274428f`)
+- [x] Phase 4 — `Scripts/release.sh` full pipeline (codesign/notarize/DMG). **Terminée 2026-07-03** : notarisation débloquée en réutilisant le profil trousseau générique `AppliMacVincentGithub` (déjà utilisé par `MarkdownViewer`/`RTKInfos`, même Apple ID/équipe — trouvé en s'inspirant du `Scripts/release.sh` de `MarkdownViewer`, aucune action manuelle de Vincent nécessaire finalement). `./Scripts/release.sh 0.1.0` exécuté pour de vrai : build Release → signature Developer ID + Hardened Runtime → DMG → notarisation Apple (`status: Accepted`) → stapling. Vérifié indépendamment : `spctl -a -t exec` → `source=Notarized Developer ID`, `stapler validate` → OK, `codesign --verify --deep --strict` → OK. DMG distribuable dans `release/MoveApps-0.1.0.dmg`.
+- [ ] Optionnel, non bloquant : AppIcon réel (`Assets.xcassets/AppIcon.appiconset` n'a que des slots vides) — l'app build et se notarise sans, juste sans icône personnalisée
 - [x] Phase 5 — comparaison stack detection bash vs Swift (`git node python` sur les deux), round-trip synthétique sur les vraies racines (deux legs `.ok`), round-trip réel sur `LinkManager` (choisi par Vincent) — checksums + git status identiques avant/après, venv fonctionnel
 - [x] Bug trouvé + corrigé via le round-trip réel : `VenvManager.recreate()` perdait TOUS les paquets d'un venv si un seul pin exact devenait indisponible (ex. version retirée de PyPI) ; corrigé avec un repli paquet-par-paquet + test de régression déterministe. `LinkManager` réparé manuellement puis re-vérifié avec le correctif (2 legs `.ok`, 0 avertissement)
-- [ ] Phase 5 — Cross-validation vs `move-app.sh`: `--list`/`--dry-run` comparison, and the first-ever real DevApps→GitHub→DevApps round trip (reverse direction has zero prod mileage)
 - [ ] Later (not blocking v1): private Sparkle feed for auto-update (GitHub Releases + PAT, or similar) once the app is stable
+- [ ] Distribuer `release/MoveApps-0.1.0.dmg` sur les autres Macs de Vincent (AirDrop / iCloud Drive perso) — geste manuel

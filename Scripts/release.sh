@@ -5,19 +5,22 @@
 # Usage: ./Scripts/release.sh <version>
 #   e.g. ./Scripts/release.sh 0.1.0
 #
-# Prerequisites (one-time setup):
+# Prerequisites (one-time setup — already satisfied on this Mac, see MEMORY.md):
 #   - "Developer ID Application: Vincent LAURIAT (KFLACS69T9)" certificate in
 #     the login keychain.
-#   - notarytool credentials stored under the keychain profile "MoveApps-Notary":
-#       xcrun notarytool store-credentials "MoveApps-Notary" \
+#   - notarytool credentials stored under the keychain profile
+#     "AppliMacVincentGithub" — a generic profile shared across Vincent's apps
+#     (MarkdownViewer, RTKInfos, ...), not per-project. Same Apple ID/team, so
+#     it works for MoveApps too with zero extra setup. Only needed again if
+#     this credential is ever revoked:
+#       xcrun notarytool store-credentials "AppliMacVincentGithub" \
 #         --apple-id "vincent@lauriat.fr" --team-id "KFLACS69T9"
 #
 # Override defaults if needed:
 #   SIGNING_IDENTITY="Developer ID Application: …"  ./Scripts/release.sh 0.1.0
-#   NOTARY_PROFILE="MoveApps-Notary"                ./Scripts/release.sh 0.1.0
+#   NOTARY_PROFILE="AppliMacVincentGithub"          ./Scripts/release.sh 0.1.0
 #
-# Local dry run (build + sign + DMG, no notarization — e.g. before the
-# "MoveApps-Notary" keychain profile has been set up, see prerequisites above):
+# Local dry run (build + sign + DMG, no notarization):
 #   SKIP_NOTARIZE=1 ./Scripts/release.sh 0.1.0
 #
 # v1 note: repo GitHub privé, pas de feed Sparkle réseau (voir MEMORY.md /
@@ -66,7 +69,7 @@ fi
 
 # 4. Stage to a clean directory, Developer ID sign with Hardened Runtime, package.
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Vincent LAURIAT (KFLACS69T9)}"
-NOTARY_PROFILE="${NOTARY_PROFILE:-MoveApps-Notary}"
+NOTARY_PROFILE="${NOTARY_PROFILE:-AppliMacVincentGithub}"
 
 STAGING_DIR="$(mktemp -d)"
 STAGING="$STAGING_DIR/MoveApps.app"

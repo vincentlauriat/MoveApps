@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-03 (Phase 5)
+last_updated: 2026-07-03 (Phase 4 done)
 ---
 
 # Project Memory — MoveApps
@@ -106,11 +106,9 @@ New files under `Sources/MoveAppsUI/MainWindow/` (replacing `MainWindowPlacehold
 - **AppIcon deferred by design, not a blocker**: `Assets.xcassets/AppIcon.appiconset` has all 10 required slots declared in `Contents.json` but zero actual image files — a placeholder. This does not fail the build (`actool` just produces an icon-less app), so v1 can ship without custom artwork; treated as cosmetic polish, not in scope unless Vincent wants to prioritize it.
 - Sparkle.framework is embedded and gets signed but has **zero code wiring** (`grep` for `Sparkle`/`SPUStandardUpdater` in `Sources/` returns nothing, no `SUPublicEDKey`/`SUFeedURL` anywhere) — consistent with the existing decision (no auto-update feed for v1, private repo). It's dead weight in the bundle for now, harmless.
 
-**Remaining real blocker for Phase 4 — needs Vincent, not automatable**: notarization. `xcrun notarytool history --keychain-profile "MoveApps-Notary"` confirms no credentials are stored. Vincent must run, once, in his own interactive terminal (needs his real Apple ID + a freshly generated app-specific password from appleid.apple.com — not something that can be scripted or done on his behalf):
-```
-xcrun notarytool store-credentials "MoveApps-Notary" --apple-id "vincent@lauriat.fr" --team-id "KFLACS69T9"
-```
-After that one-time setup, `./Scripts/release.sh 0.1.0` (no env var) produces a fully signed, notarized, stapled, distributable DMG. Suggest he run it himself via `! ./Scripts/release.sh 0.1.0` so he can see/approve any keychain prompt interactively, even though the dry run above suggests none should appear.
+**Notarization blocker resolved 2026-07-03 — turned out not to need Vincent's action at all.** The initial assumption (a per-project `MoveApps-Notary` keychain profile needing fresh Apple ID credentials) was wrong. Prompted by Vincent to "inspire toi du projet markdownviewer" — reading `~/DevApps/MarkdownViewer/Scripts/release.sh` showed its actual `NOTARY_PROFILE` default is `AppliMacVincentGithub`, not the `MarkdownViewer-Notary` name its own header comment claims (the doc had drifted from the code). `notarytool` credentials are scoped to Apple ID + team, not per-app — `xcrun notarytool history --keychain-profile "AppliMacVincentGithub"` confirmed this profile already exists and has a real history of successful submissions for Vincent's other apps (`MarkdownViewer-0.9.0.dmg`, `RTKInfos-1.1.0.dmg`, ...). Updated `Scripts/release.sh`'s `NOTARY_PROFILE` default to `AppliMacVincentGithub` and ran the real, full pipeline: `./Scripts/release.sh 0.1.0` — build, Developer ID + Hardened Runtime signing, DMG, notarization (`status: Accepted`), stapling, all succeeded. Independently re-verified: `spctl -a -t exec` → `source=Notarized Developer ID` (not just `Developer ID` like the earlier `SKIP_NOTARIZE` dry run), `xcrun stapler validate` → OK, `codesign --verify --deep --strict` → OK. `release/MoveApps-0.1.0.dmg` (1.3M) is now a genuinely distributable artifact.
+
+**Lesson for future release work in this repo (and Vincent's other apps)**: `AppliMacVincentGithub` is Vincent's one shared notarytool credential profile across projects — check for it before assuming a new one needs setting up. Don't trust a script's header-comment prerequisites blindly; the actual `NOTARY_PROFILE`/`SIGNING_IDENTITY` default values in the script body are the source of truth (MarkdownViewer's own comment was stale on this exact point).
 
 **Phase 4 committed 2026-07-03** on `feature/phase3-main-window` (commit `9cebda8`).
 

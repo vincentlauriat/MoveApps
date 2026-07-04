@@ -27,6 +27,8 @@ public struct MenuBarDashboardView: View {
 
             actions
 
+            indexButton
+
             Divider().opacity(0.5)
 
             footer
@@ -141,6 +143,41 @@ public struct MenuBarDashboardView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.glass)
+        }
+    }
+
+    private var indexButton: some View {
+        VStack(spacing: 4) {
+            Button {
+                model.regenerateIndex()
+            } label: {
+                HStack {
+                    if model.isGeneratingIndex {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Image(systemName: "list.bullet.rectangle.portrait")
+                    }
+                    Text("Régénérer l'index")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .disabled(model.isGeneratingIndex)
+            .help("Réécrit INDEX.md dans les deux racines (Actif + Archive)")
+
+            if let result = model.lastIndexResult {
+                switch result {
+                case .written(let urls):
+                    Text("Index écrit dans \(urls.count) racine\(urls.count == 1 ? "" : "s")")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                case .failed(let reason):
+                    Text(reason)
+                        .font(.caption2)
+                        .foregroundStyle(.red)
+                        .lineLimit(2)
+                }
+            }
         }
     }
 

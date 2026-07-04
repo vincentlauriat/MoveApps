@@ -24,6 +24,10 @@ public final class DashboardViewModel {
     public private(set) var isCreating = false
     public private(set) var lastCreation: ProjectCreationResult?
 
+    /// Set while the INDEX.md files are being (re)generated, and cleared with the outcome.
+    public private(set) var isGeneratingIndex = false
+    public private(set) var lastIndexResult: IndexGenerationResult?
+
     private let rootPaths: RootPathsController
     /// Read-only view of the same history file the main window writes to. Safe as a second
     /// instance because the dashboard only ever calls `all()` (no concurrent `append`).
@@ -104,5 +108,26 @@ public final class DashboardViewModel {
 
     public func clearCreationResult() {
         lastCreation = nil
+    }
+
+    // MARK: - Index
+
+    /// Regenerates the unified `INDEX.md` in both roots on demand (the "Régénérer l'index" button).
+    /// The scan + README extraction runs off the main actor; only the outcome flags are updated here.
+    public func regenerateIndex() {
+        guard !isGeneratingIndex else { return }
+        isGeneratingIndex = true
+        lastIndexResult = nil
+        let locations = rootPaths.settings.locations
+
+        Task {
+            let result = await Task.detached { IndexGenerator().write(roots: locations) }.value
+            self.lastIndexResult = result
+            self.isGeneratingIndex = false
+        }
+    }
+
+    public func clearIndexResult() {
+        lastIndexResult = nil
     }
 }

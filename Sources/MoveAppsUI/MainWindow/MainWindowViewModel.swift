@@ -137,6 +137,29 @@ public final class MainWindowViewModel {
         selection.removeAll()
     }
 
+    /// How many of a folder's projects are currently selected — drives the header's tri-state control.
+    public func selectedCount(in folderProjects: [QuickProject]) -> Int {
+        folderProjects.reduce(0) { $0 + (selection.contains($1.id) ? 1 : 0) }
+    }
+
+    /// Selects every project in a level-1 folder, or deselects them all if they already are.
+    /// Like `toggleSelection`, it keeps the selection confined to a single root: toggling a folder
+    /// that lives in a different root than the current selection resets the selection first.
+    public func toggleFolderSelection(_ folderProjects: [QuickProject]) {
+        guard let first = folderProjects.first else { return }
+        if let anySelected = selection.first,
+           let existing = projects.first(where: { $0.id == anySelected }),
+           existing.root != first.root {
+            selection.removeAll()
+        }
+        let ids = folderProjects.map(\.id)
+        if ids.allSatisfy({ selection.contains($0) }) {
+            ids.forEach { selection.remove($0) }
+        } else {
+            ids.forEach { selection.insert($0) }
+        }
+    }
+
     /// The root the current selection lives under (`nil` when nothing is selected).
     public var selectionRoot: RootKind? {
         guard let first = selection.first else { return nil }

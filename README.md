@@ -6,6 +6,8 @@ App macOS native (+ script CLI legacy) pour migrer proprement des projets de dé
 
 Réécriture SwiftUI native de `move-app.sh` : menu bar + fenêtre principale, transferts **bidirectionnels** (GitHub→DevApps et DevApps→GitHub), utilisable sur plusieurs Macs. Voir `PLAN.md` pour le phasage, `ARCHITECTURE.md`/`ARCHITECTURE_EN.md` pour la conception technique, `MEMORY.md` pour les décisions et l'état d'avancement.
 
+**Index des projets** : MoveApps génère un `INDEX.md` unifié couvrant les deux racines (Actif + Archive) et en écrit une **copie identique dans chacune** (`~/DevApps/INDEX.md` et `~/Documents/GitHub/INDEX.md`). Chaque projet est listé avec son dossier-catégorie, sa stack détectée et une description extraite de son `README.md`. Régénéré via le bouton « Régénérer l'index » du tableau de bord et automatiquement après chaque transfert.
+
 État actuel : Phases 0 à 3 terminées — logique métier portée (17 tests), menu bar, et fenêtre principale (deux colonnes, drag & drop, plan de transfert, historique) build + tests verts. Repo GitHub privé `vincentlauriat/MoveApps` créé et poussé. Prochaine étape : Phase 4 (packaging/distribution).
 
 Le script `move-app.sh` documenté ci-dessous reste dans le repo comme référence/fallback CLI, non maintenu activement.

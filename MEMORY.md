@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-03 (multi-select batch transfers)
+last_updated: 2026-07-04 (project index generation)
 ---
 
 # Project Memory — MoveApps
@@ -182,3 +182,26 @@ Vincent: "je voudrais pouvoir selectionner plusieurs projets pour faire des tran
 - Each `MainProjectRowView` has a selection checkbox; `selection: Set<URL>` on `MainWindowViewModel`. Selection is **confined to one root at a time** — `toggleSelection` clears the set if you check a project in a different root, since a batch only moves one direction. A batch bar appears at the bottom (mutually exclusive with the progress strip) when the selection is non-empty.
 - `BatchTransferView` sheet: project list + direction + a folder `Picker` whose default is `.preserveEach`, plus Racine/existing/new to force one folder. `BatchFolderMode` enum (`.preserveEach` / `.fixed(String?)`). `runBatch` runs plans **sequentially** (pipeline touches git/FS; sequential keeps progress legible and a single failure doesn't abort the rest), surfacing `batchIndex`/`batchTotal` as "Projet i/N" in the progress strip.
 - Batch logic lives entirely in the UI view model + views; `MoveAppsCore` and the pipeline are unchanged (still 30 tests / 11 suites; batch reuses the same per-project `TransferPlan` path). Build green, app relaunched. **Batch UI not yet visually confirmed** by Vincent. Not yet committed as of this update.
+
+## Project index generation (2026-07-04)
+
+Vincent: "les projets sont sur deux endroits possibles, les actifs sur ~/DevApps et les archives sur ~/Documents/GitHub … il serait interressant que la generation de l'index soit sur les deux repertoires, avec une copie dans chaque et que ce soit fait directement par l'application MoveApps." (Context: `~/DevApps/INDEX.md` was a hand-maintained catalog that had gone stale — a big cleanup had removed/moved many projects since it was last written. Vincent wants MoveApps itself to own index generation, mirrored into both roots.)
+
+His three design choices (asked up front): descriptions **extracted from each project's README** (the app can't author prose); **both** triggers (dashboard button + auto after every transfer); **one unified index covering both roots, identical copy in each** (not one-root-per-file).
+
+Implementation — `IndexGenerator` (`Sources/MoveAppsCore/Services/IndexGenerator.swift`, a pure `Sendable` struct):
+- `write(roots:)` builds the markdown once and writes it to `<active>/INDEX.md` and `<archive>/INDEX.md`; a root that isn't present on disk is skipped (not an error), so a Mac with only one root mounted still gets its copy. Returns `IndexGenerationResult` (`.written([URL])` / `.failed(String)`).
+- `makeMarkdown(roots:now:)` is exposed separately so tests assert on content without touching real roots.
+- Reuses `ProjectScanner.scan` per root → sees exactly the transfer UI's project list (container folders unpacked, `containerName` carried). Groups by root → category folder (sorted) → root-level ("Racine"). Entry line: `**name** — \`container/name\` — stack — description`.
+- **Location rendered as a plain `\`path\``, not a markdown link**, on purpose: both copies are identical, so a relative link can only resolve from its own root's copy — plain path avoids half-broken links in each file.
+- **Per-project disk size deliberately omitted** — one `du` per project (~100 of them) is far too slow for a regenerate-on-every-transfer action; the scan already gives stack + category for free. If ever wanted, it's a documented optional TODO.
+
+README description extraction (the fiddly part — `firstMeaningfulLine`/`cleanMarkdown`/`isProse`/`startsWithCommand`, all `static` so they're unit-testable directly):
+- First real prose line of `README.md` (also tries `README.fr.md`/lowercase variants). Skips: headings (`#`, remembered as H1 fallback), blockquotes/tables/rules, images/badges, `shields.io`, raw HTML + **any `="`** (catches `src=`/`media=`/`alt=`/`align=` attribute-soup lines in one rule — this was iterated on: claude-mem's README is a `<picture>` block whose wrapped lines are bare attributes), multilingual nav bars (`≥3` pipe-separated segments — oh-my-claudecode's language selector), label lines (trailing `:`, checked **after** markdown-stripping so `**macOS / Linux:**` is caught), and shell/install commands by first token (`curl`/`npm`/`irm`/`brew`/… — feynman's README is install-command-heavy). `isProse` requires ≥12 chars, a space, and ≥55% letters (kills ASCII-art banners like headroom's box-drawing). `cleanMarkdown` decodes `&nbsp;`/`&amp;`/… and strips residual tags. Falls back to the H1 title when no prose survives.
+- These rules were tuned by **generating against the real roots and eyeballing the output**, not guessed — each skip rule maps to a concrete real-README case (documented in the test `skipsNoiseLines`/`decodesEntities`).
+
+Wiring: `DashboardViewModel.regenerateIndex()` (menu-bar dashboard "Régénérer l'index" button + inline result banner) and `MainWindowViewModel.regenerateIndex()` (fire-and-forget `Task.detached` after both `run` and `runBatch` complete). Both run the scan off the main actor.
+
+Validation: 8 `IndexGeneratorTests`, full suite **39 tests / 12 suites green**, `BUILD SUCCEEDED`. Generated the real `INDEX.md` in both roots via a disposable scratch test calling `IndexGenerator().write(roots: .default)` (the exact app path) — 104 projects (25 active + 79 archived), the two files byte-identical; scratch test then removed. **The dashboard button + result banner have NOT been visually confirmed by Vincent** (no screen access here) — flagged in TODOS. Not yet committed as of this memory update.
+
+Note for a future index update: the hand-written `~/DevApps/INDEX.md` (rich categorized descriptions, a "Sommaire"/TOC) has now been **replaced on disk by the app-generated version** (flatter: README-extracted one-liners, both-roots coverage). That's intended — the app owns it now. When scanning the real tree by hand, use `find . -maxdepth 2 -type d`, not `ls` (RTK compacts `ls` output and it looked truncated/misleading during this session).

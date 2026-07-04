@@ -252,6 +252,7 @@ public final class MainWindowViewModel {
             self.activeName = nil
             self.refresh()
             self.loadHistory()
+            self.regenerateIndex()
         }
     }
 
@@ -292,7 +293,16 @@ public final class MainWindowViewModel {
             self.batchTotal = 0
             self.refresh()
             self.loadHistory()
+            self.regenerateIndex()
         }
+    }
+
+    /// Rewrites the unified `INDEX.md` in both roots after a transfer, so the on-disk index always
+    /// reflects where projects actually live. Fire-and-forget off the main actor — the transfer
+    /// itself already succeeded, so a failure here only leaves a stale index (logged, not surfaced).
+    private func regenerateIndex() {
+        let locations = rootPaths.settings.locations
+        Task.detached { _ = IndexGenerator().write(roots: locations) }
     }
 }
 

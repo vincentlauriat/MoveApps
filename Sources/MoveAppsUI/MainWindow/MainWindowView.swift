@@ -196,19 +196,34 @@ struct RootColumnView: View {
             ScrollView {
                 GlassEffectContainer(spacing: 8) {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        let projects = model.projects(for: root)
-                        if projects.isEmpty {
+                        let groups = projectGroups(model.projects(for: root))
+                        if groups.isEmpty {
                             emptyState
                         } else {
-                            ForEach(projects) { project in
-                                MainProjectRowView(
-                                    project: project,
-                                    disabled: model.isRunning,
-                                    isSelected: model.isSelected(project),
-                                    onToggleSelect: { model.toggleSelection(project) },
-                                    action: { model.prepareTransfer(project) }
-                                )
-                                .draggable(DraggedProject(path: project.candidate.path, root: project.root))
+                            ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
+                                // Level-1 folder: a header, then its (level-2) projects indented under it.
+                                if let container = group.container {
+                                    FolderHeaderView(
+                                        name: container,
+                                        total: group.projects.count,
+                                        selectedCount: model.selectedCount(in: group.projects),
+                                        disabled: model.isRunning,
+                                        onToggle: { model.toggleFolderSelection(group.projects) }
+                                    )
+                                    .padding(.top, index == 0 ? 0 : 8)
+                                    .padding(.horizontal, 4)
+                                }
+                                ForEach(group.projects) { project in
+                                    MainProjectRowView(
+                                        project: project,
+                                        disabled: model.isRunning,
+                                        isSelected: model.isSelected(project),
+                                        onToggleSelect: { model.toggleSelection(project) },
+                                        action: { model.prepareTransfer(project) }
+                                    )
+                                    .padding(.leading, group.container == nil ? 0 : 20)  // nest level-2
+                                    .draggable(DraggedProject(path: project.candidate.path, root: project.root))
+                                }
                             }
                         }
                     }
@@ -294,12 +309,6 @@ struct MainProjectRowView: View {
                 Text(project.candidate.name)
                     .font(.system(.body, design: .rounded, weight: .semibold))
                     .lineLimit(1)
-                if let container = project.candidate.containerName {
-                    Label(container, systemImage: "folder")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
                 StackTagRow(tags: sortedTags)
             }
             Spacer(minLength: 8)
@@ -340,5 +349,88 @@ func rootLabel(_ kind: RootKind) -> String {
     switch kind {
     case .active: return "Actif"
     case .archive: return "Archive"
+    }
+}
+
+// MARK: - Level-1 grouping
+
+/// A level-1 grouping of a column's projects: either the loose projects sitting directly at the
+/// root (`container == nil`, shown first, un-indented) or the projects filed under one level-1
+/// folder (shown under a folder header, indented).
+private struct ProjectGroup: Identifiable {
+    let id: String          // "" for the root-level group, else the container folder name
+    let container: String?
+    let projects: [QuickProject]
+}
+
+/// Splits a column's projects into the root-level group followed by one group per level-1 container
+/// folder. Both the loose group and the folder groups are name-sorted; folder groups come after the
+/// loose ones so the on-disk hierarchy (level-1 folders holding level-2 projects) reads at a glance.
+private func projectGroups(_ projects: [QuickProject]) -> [ProjectGroup] {
+    let sorted = projects.sorted {
+        $0.candidate.name.localizedCaseInsensitiveCompare($1.candidate.name) == .orderedAscending
+    }
+    let loose = sorted.filter { $0.candidate.containerName == nil }
+    let contained = Dictionary(grouping: sorted.filter { $0.candidate.containerName != nil }) {
+        $0.candidate.containerName!
+    }
+
+    var groups: [ProjectGroup] = []
+    if !loose.isEmpty {
+        groups.append(ProjectGroup(id: "", container: nil, projects: loose))
+    }
+    for name in contained.keys.sorted(by: { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }) {
+        groups.append(ProjectGroup(id: name, container: name, projects: contained[name] ?? []))
+    }
+    return groups
+}
+
+/// A header marking a level-1 folder that groups the (level-2) project rows below it. Tapping it
+/// selects the whole folder for a batch transfer (or deselects it when already fully selected); a
+/// tri-state control shows none / some / all selected.
+private struct FolderHeaderView: View {
+    let name: String
+    let total: Int
+    let selectedCount: Int
+    let disabled: Bool
+    let onToggle: () -> Void
+
+    private var selectionIcon: String {
+        if selectedCount == 0 { return "circle" }
+        if selectedCount == total { return "checkmark.circle.fill" }
+        return "minus.circle.fill"
+    }
+
+    var body: some View {
+        Button(action: onToggle) {
+            HStack(spacing: 7) {
+                Image(systemName: selectionIcon)
+                    .font(.system(size: 15))
+                    .foregroundStyle(selectedCount == 0 ? Color.secondary : Color.accentColor)
+                Image(systemName: "folder.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Color.accentColor)
+                Text(name)
+                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Text("\(total)")
+                    .font(.system(.caption2, design: .rounded, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 1)
+                    .background(Capsule().fill(Color.secondary.opacity(0.15)))
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .help(selectedCount == total && total > 0
+              ? "Tout désélectionner dans \(name)"
+              : "Sélectionner tout le dossier \(name)")
+        .padding(.horizontal, 8)
+        .padding(.vertical, 2)
+        .accessibilityLabel("Dossier \(name), \(total) projet\(total == 1 ? "" : "s"), \(selectedCount) sélectionné\(selectedCount == 1 ? "" : "s")")
     }
 }

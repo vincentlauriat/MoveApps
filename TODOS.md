@@ -101,5 +101,5 @@
 
 ## Release 0.2.0 (2026-07-07)
 - [x] `project.yml` bumpé `0.1.0` → `0.2.0`, build Release vérifié (`BUILD SUCCEEDED` après nettoyage d'un cache SPM référençant l'ancien chemin pré-déplacement `~/DevApps/MoveApps`).
-- [ ] DMG 0.2.0 signé + notarisé + staplé via `Scripts/release.sh 0.2.0`.
-- [ ] Release GitHub créée avec le DMG en asset.
+- [x] DMG 0.2.0 signé + notarisé (Accepted) + staplé via `Scripts/release.sh 0.2.0` (1.9M). Vérification indépendante OK : `stapler validate`, `spctl -a -t exec` sur l'app montée du DMG → accepted/Notarized Developer ID, `codesign --verify --deep --strict` OK.
+- [x] Release GitHub créée avec le DMG en asset : https://github.com/vincentlauriat/MoveApps/releases/tag/v0.2.0

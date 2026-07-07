@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-07 (Dock reopen + main window visual redesign, in progress)
+last_updated: 2026-07-07 (Release 0.2.0 shipped; visual polish round still unconfirmed by Vincent)
 ---
 
 # Project Memory — MoveApps
@@ -232,5 +232,15 @@ Implementation in `MainWindowView.swift`:
 **Process note for future mockup→code translation in this repo**: re-open the actual mockup file/CSS values side-by-side while writing the SwiftUI, rather than translating from memory of "the general vibe" — the gap between the two was exactly the specific tokens (font design, corner radius, tint values) that got approximated instead of copied precisely. Screenshot-based verification worked well here (Vincent sent 4 screenshots across the session) but each round only caught what was different since the *previous* round — a full side-by-side diff against the source mockup up front (done only on round 3) would have caught more in one pass.
 
 **Status at end of session (Vincent said "je coupe" — cutting the session)**: build succeeds, app relaunched with the latest fixes (bespoke teal for Actif + forced-neutral tag tint), but **no screenshot was taken after these last two fixes** — the visual polish is not confirmed complete. Next session should start with a fresh screenshot before doing anything else on this thread.
+
+## Release 0.2.0 (2026-07-07)
+
+Vincent asked for a release right after the session above ("cree une release"). Explicitly chose to ship with the visual-polish round still unconfirmed rather than pausing for a screenshot review first — so a fresh screenshot check is still the right way to open the next session, but it's now a **post-release follow-up**, not a release blocker.
+
+Real build issue found and fixed along the way (root cause, not a workaround): `xcodebuild` failed with `error: There is no XCFramework found at '/Users/vincent/DevApps/MoveApps/build/SourcePackages/artifacts/sparkle/Sparkle/Sparkle.xcframework'` — a stale absolute path baked into `build/SourcePackages/workspace-state.json` from **before** the project was moved from `~/DevApps/MoveApps` to `~/DevApps/MacTools/MoveApps` (see the `move-app.sh` history above). `-derivedDataPath build` is local to the project, but the cached workspace-state JSON still pointed at the pre-move path. Fix: `rm -rf build` to force a full clean package re-resolution — worked first try, `BUILD SUCCEEDED`. Worth remembering for any project migrated with `move-app.sh`: a stale SPM `workspace-state.json` pointing at the old absolute path is a likely first build failure after the move.
+
+Version bumped `0.1.0` → `0.2.0` in `project.yml` (both `MARKETING_VERSION` and `CFBundleShortVersionString`) — covers everything shipped since the icon-only 0.1.0 DMG (hierarchical lists, unified index, Dock reopen, visual redesign). Committed directly to `main` (`7e1258a`) per Vincent's confirmation — consistent with how prior releases in this repo were handled (e.g. `743c141`), even though the general house rule is feature-branch-first.
+
+`Scripts/release.sh 0.2.0` ran clean end to end: build → Developer ID sign + Hardened Runtime → DMG → notarized (Accepted) → stapled, 1.9M. Independent re-verification (not just trusting the script's own success message): `stapler validate` OK, and since `spctl -a -t exec`/`-t install` on the **DMG container itself** correctly reports "rejected / no usable signature" (DMGs aren't code-signed objects — only the app inside is, plus the stapled notarization ticket), the real check is mounting the DMG and running `spctl -a -t exec` + `codesign --verify --deep --strict` against the `.app` inside: both passed (`accepted / source=Notarized Developer ID`). Tag `v0.2.0` pushed, GitHub release published with the DMG as a release asset: https://github.com/vincentlauriat/MoveApps/releases/tag/v0.2.0
 
 Unrelated side-quest handled mid-session (not a MoveApps.app change, logged here only for continuity): Vincent asked to dedupe two `vincentlauriat.github.io` checkouts (`~/DevApps/vincentlauriat.github.io` vs `~/DevApps/WebSites/vincentlauriat.github.io`), assuming the `WebSites` one was current. `git log`/`rev-list --left-right --count` showed the opposite — the root copy was in sync with `origin/main` (0/0) while `WebSites` was 4 commits behind. Fast-forward-pulled `WebSites` to match, verified byte-identical with `diff -rq`, then deleted the root copy — outcome matched Vincent's goal (keep `WebSites`) without losing any of the 4 commits.

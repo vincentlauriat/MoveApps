@@ -35,16 +35,19 @@ struct StackTagView: View {
     let tag: StackTag
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 4) {
             Image(systemName: tag.icon)
-                .font(.system(size: 9, weight: .semibold))
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(tag.tint)
             Text(tag.rawValue)
-                .font(.system(size: 10, weight: .medium, design: .rounded))
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
         }
-        .foregroundStyle(tag.tint)
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
-        .glassEffect(.regular.tint(tag.tint.opacity(0.35)), in: Capsule())
+        // Tint forced to a flat neutral rather than left ambient: `.regular` alone still picked up
+        // a hue somewhere between the icon's colour and the glass material on this OS build.
+        .glassEffect(.regular.tint(Color.primary.opacity(0.05)), in: Capsule())
     }
 }
 

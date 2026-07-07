@@ -7,6 +7,11 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     static let showInDockDefaultsKey = "showInDock"
 
+    /// Set once from `MoveAppsApp` after the main window's first appearance: AppKit-level events
+    /// (Dock icon click) have no direct access to SwiftUI's `openWindow` environment action, so
+    /// this closure bridges the two.
+    var openMainWindow: (() -> Void)?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: [Self.showInDockDefaultsKey: true])
         Self.applyDockVisibility()
@@ -16,6 +21,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Dock mode) must never quit it.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    /// Dock icon clicked with no window on screen: bring back the main window (the Active/Archive
+    /// lists) instead of leaving the click without effect.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            openMainWindow?()
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        return true
     }
 
     static func applyDockVisibility() {

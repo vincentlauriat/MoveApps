@@ -8,7 +8,7 @@ Réécriture SwiftUI native de `move-app.sh` : menu bar + fenêtre principale, t
 
 **Index des projets** : MoveApps génère un `INDEX.md` unifié couvrant les deux racines (Actif + Archive) et en écrit une **copie identique dans chacune** (`~/DevApps/INDEX.md` et `~/Documents/GitHub/INDEX.md`). Chaque projet est listé avec son dossier-catégorie, sa stack détectée et une description extraite de son `README.md`. Régénéré via le bouton « Régénérer l'index » du tableau de bord et automatiquement après chaque transfert.
 
-État actuel : Phases 0 à 3 terminées — logique métier portée (17 tests), menu bar, et fenêtre principale (deux colonnes, drag & drop, plan de transfert, historique) build + tests verts. Repo GitHub privé `vincentlauriat/MoveApps` créé et poussé. Prochaine étape : Phase 4 (packaging/distribution).
+État actuel : Phases 0 à 5 terminées (logique métier, menu bar en tableau de bord, fenêtre principale, packaging/notarisation, cross-validation) — voir `PLAN.md`. Distribuable via `release/MoveApps-0.2.0.dmg` (signé + notarisé). La fenêtre principale affiche désormais des listes hiérarchiques Archive/Actif avec en-têtes de dossier sélectionnables, un bandeau de compteurs/taille disque par racine + une recherche, et se rouvre au clic sur l'icône Dock ; le tableau de bord barre de menu propose la création de projet depuis un modèle. Chantier en cours : passe d'élégance visuelle sur la fenêtre principale (typographie, couleurs Archive/Actif sur mesure), pas encore confirmée par Vincent — voir `TODOS.md`.
 
 Le script `move-app.sh` documenté ci-dessous reste dans le repo comme référence/fallback CLI, non maintenu activement.
 

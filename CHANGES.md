@@ -199,3 +199,36 @@
 
 ### Validation (init script)
 - `MoveAppsCoreTests` **33 / 11 suites** green (3 new `TemplateService` tests: runs on opt-in with correct display/slug args, skips on opt-out, reports `.failed` on non-zero exit — via a `StubInitScriptRunner`). App `BUILD SUCCEEDED` (Swift 6 strict concurrency, no warnings). End-to-end: the exact `BootstrapScriptRunner` bash command run against the real AppKitTemplate produced a renamed project that `BUILD SUCCEEDED` (macOS) with git seeded by the bootstrap commit. **UI confirmed by Vincent (2026-07-03): the toggle appears for AppKitTemplate and project creation works.** Merged to `main` (`ab18ca1`) and pushed.
+
+## MoveApps.app — Dock reopen + main window visual redesign (2026-07-07)
+
+### Added (Dock icon reopen)
+- Clicking the Dock icon with no window open now reopens the main window instead of doing nothing. `AppDelegate.applicationShouldHandleReopen(_:hasVisibleWindows:)` calls a new `openMainWindow: (() -> Void)?` closure, wired once from `MoveAppsApp`'s `Window("main")` content `.onAppear` (`{ openWindow(id: "main") }`) — the standard bridge since AppKit has no direct path to SwiftUI's `openWindow` environment action.
+
+### Added (main window redesign — "piste A" of 4 mockups presented for choice)
+- Four alternative main-window layouts were mocked up as an HTML artifact (enhanced two-column, hierarchical sidebar, single-list toggle, dashboard+Kanban) for Vincent to pick from; **"A" (enhanced two columns)** was chosen.
+- New header strip above the two columns: Archive/Actif stat chips (count + disk usage, reusing `DashboardViewModel` — now also injected into the `Window("main")` scene, not menu-bar-only anymore) plus a search field filtering both columns live by project name.
+- The batch-selection bar and the transfer-progress bar are now floating capsule "pills" overlaid at the bottom of the window (`batchPill`/`progressPill`) instead of full-width bars pushing the column content up.
+
+### Fixed
+- `DiskUsage.sizeBytes(of:)` was discarding a perfectly valid disk-usage total whenever `du -sk` hit an unreadable or locked subdirectory (`"Resource deadlock avoided"` on some `.dSYM`/`.framework` bundles — common on real project trees): `du` exits non-zero in that case but still prints the correct total to stdout, and the code was gating on `result.didSucceed` (exit code). Now only gates on `result.timedOut`. Timeout also bumped 60s → 120s as a safety margin (the actual `du` run on Vincent's ~86-project Archive root took ~13s).
+- `ProjectScanner.scan` no longer surfaces a genuinely empty container folder as a fallback "project" (e.g. a placeholder `_En cours` folder with zero contents) — only non-empty folders with no recognized project children still fall back, per the scanner's original "nothing silently disappears" contract.
+
+### Changed (alphabetical ordering)
+- `projectGroups` (in `MainWindowView`) now interleaves loose projects and level-1 container folders into a **single alphabetical list** (e.g. `AppleWatchTools`, then folder `AuditTools`, then `AzureTools`, then folder `BmadTools`…) instead of showing all loose projects first and all folders after, each sorted separately.
+
+### Changed (visual polish, several rounds against an approved mockup)
+- **Bespoke root colors** (`RootAccent.swift`, new): Archive gets a muted amber, Actif a muted teal, both as dynamic `NSColor`s adapting between light/dark — replacing system `.orange`/`Color.accentColor`, whose saturated, off-the-shelf tones read as "candy" next to the rest of the window. Applied to the column icon, the stat chip, and the per-row transfer arrow (tinted by the transfer's *destination* root).
+- **Typography**: column titles ("Archive"/"Actif") set in `design: .serif` (New York) to match the approved mockup's display face; `design: .rounded` — used pervasively across the main window (row names, stat-chip counts, pill text, folder headers) — dropped everywhere in favor of the plain system face, since the rounded design read as "cute/childish" rather than the elegant, editorial feel the mockup was going for.
+- **Folder headers** decluttered: no more folder icon; label now a small uppercase, letter-spaced, secondary-colored caption (was a bold black subheadline) with a monospaced count badge — reads as a quiet section label instead of competing visually with project rows.
+- **Project row cards**: corner radius reduced 14 → 10pt, less "bubble"-like.
+- **Stack tag badges** (`StackTagStyle.swift`): background forced to a flat neutral tint (`Color.primary.opacity(0.05)`) instead of each technology's own saturated color — `.glassEffect(.regular)` alone was still picking up a hue from somewhere (ambient tint or content-adaptive glass rendering) even after the per-tag `.tint()` was removed, so the tint is now set explicitly rather than left ambient.
+
+### Validation
+- Every change re-built (`xcodebuild ... BUILD SUCCEEDED`) and the app relaunched for visual re-check via screenshot at each round. **As of this doc update, the visual polish round is not yet confirmed complete by Vincent** — the last screenshot ("ça s'améliore mais ce n'est pas encore cela") predates the final two fixes (bespoke teal for Actif, forced-neutral tag tint); a fresh screenshot is needed next session to confirm.
+
+## Release 0.2.0 (2026-07-07)
+
+### Changed
+- `project.yml`: `MARKETING_VERSION` / `CFBundleShortVersionString` bumped `0.1.0` → `0.2.0` — covers everything shipped since the icon-only 0.1.0 DMG: hierarchical Archive/Actif lists with folder-select headers, unified project index generation, Dock reopen, and the main-window visual redesign above.
+- Vincent chose to release with the visual-polish round still visually unconfirmed (see note above) — treat as a known follow-up, not a regression, if the next screenshot review flags something.

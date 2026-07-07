@@ -8,7 +8,8 @@ import Foundation
 /// multiple independent git repos as subdirectories) — its qualifying children are surfaced
 /// instead, so each can be selected and transferred on its own. A folder with no qualifying
 /// children (neither itself nor any child looks like a project) is still surfaced as a fallback,
-/// so nothing silently disappears from the list.
+/// so nothing silently disappears from the list — unless the folder is entirely empty, in which
+/// case there is nothing to transfer and it's skipped outright.
 public struct ProjectScanner: Sendable {
     private let detector: StackDetector
     private var fileManager: FileManager { .default }
@@ -33,11 +34,14 @@ public struct ProjectScanner: Sendable {
                 continue
             }
 
-            let children = ((try? fileManager.contentsOfDirectory(
+            let allChildren = (try? fileManager.contentsOfDirectory(
                 at: entry,
                 includingPropertiesForKeys: [.isDirectoryKey],
                 options: [.skipsHiddenFiles]
-            )) ?? []).filter { isDirectory($0) && detector.isProjectRoot(at: $0) }
+            )) ?? []
+            guard !allChildren.isEmpty else { continue }  // nothing in it to transfer
+
+            let children = allChildren.filter { isDirectory($0) && detector.isProjectRoot(at: $0) }
 
             if children.isEmpty {
                 result.append(makeCandidate(entry))

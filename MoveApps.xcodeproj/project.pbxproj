@@ -43,6 +43,7 @@
 		92D56E221A90D0D7C85D6D10 /* MoveAppsCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 94FFDF8771D100B593554BE0 /* MoveAppsCore.framework */; };
 		98B294A85B598AC1721D81F5 /* MenuBarIconView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE922E1A1FA522002C38EE0F /* MenuBarIconView.swift */; };
 		A127FE04C061805D351431BA /* DirectoryMover.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6DD39D701B7C757855759F04 /* DirectoryMover.swift */; };
+		A7CDEE4B1AE9DFB7CB686E21 /* RootAccent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8614C23073C9890380A9C262 /* RootAccent.swift */; };
 		A7CF2AEC5034DB10995A8833 /* ICloudMaterializerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30A511B7606634EF61E2AE2A /* ICloudMaterializerTests.swift */; };
 		ADD210CA2A97D9373ADC77E8 /* GitSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76F74DDDDBE0F38E0B020C8 /* GitSnapshot.swift */; };
 		AEC71687C7AB42422FCD56B3 /* DashboardViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E30425B2E771383352E59F5 /* DashboardViewModel.swift */; };
@@ -173,6 +174,7 @@
 		7F7F7220D7CDC292BB41CA9A /* AsyncTimeout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AsyncTimeout.swift; sourceTree = "<group>"; };
 		81BD634D7BE10426B3553BA5 /* NodeModulesInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeModulesInstaller.swift; sourceTree = "<group>"; };
 		83B1D1AA6FEB6352E1B8B6A1 /* TemplateServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateServiceTests.swift; sourceTree = "<group>"; };
+		8614C23073C9890380A9C262 /* RootAccent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootAccent.swift; sourceTree = "<group>"; };
 		88A896A9D9BAEF023D644C35 /* MainWindowViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowViewModel.swift; sourceTree = "<group>"; };
 		8C9B51A9156E0F6BC7B7F045 /* TestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestSupport.swift; sourceTree = "<group>"; };
 		8E30425B2E771383352E59F5 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
@@ -411,6 +413,7 @@
 		A8AB0900F7CD18A02D692B69 /* Support */ = {
 			isa = PBXGroup;
 			children = (
+				8614C23073C9890380A9C262 /* RootAccent.swift */,
 				5A618C225036F709B660D414 /* StackTagStyle.swift */,
 			);
 			path = Support;
@@ -685,6 +688,7 @@
 				E8FC153D7BC9337BF8F0C471 /* MoveAppsUI.swift in Sources */,
 				3E92C673587918F5531E61A8 /* NewProjectView.swift in Sources */,
 				40912863507C59C566F88A1A /* ProjectListing.swift in Sources */,
+				A7CDEE4B1AE9DFB7CB686E21 /* RootAccent.swift in Sources */,
 				B2B9215CAF60594485C1F519 /* RootPathsController.swift in Sources */,
 				89B00F52B66ED0D54A70825F /* SettingsView.swift in Sources */,
 				4667573F5C9443F43AE1B437 /* StackTagStyle.swift in Sources */,
@@ -973,7 +977,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vincent.MoveApps;
 				PRODUCT_NAME = MoveApps;
 				SDKROOT = macosx;
@@ -1053,7 +1057,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vincent.MoveApps;
 				PRODUCT_NAME = MoveApps;
 				SDKROOT = macosx;

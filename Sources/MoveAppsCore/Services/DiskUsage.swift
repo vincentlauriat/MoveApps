@@ -21,9 +21,12 @@ public actor DiskUsage {
         let result = await runner.run(
             ["-sk", directory.path],
             executable: "/usr/bin/du",
-            timeout: .seconds(60)
+            timeout: .seconds(120)
         )
-        guard result.didSucceed else { return nil }
+        // `du` exits non-zero whenever it hits an unreadable or locked subdirectory (e.g.
+        // "Resource deadlock avoided" on some .dSYM/.framework bundles) — common on real project
+        // trees — but it still prints a valid total to stdout. Only a timeout means no answer.
+        guard !result.timedOut else { return nil }
         // `du -sk` output: "<kilobytes>\t<path>" — take the leading integer.
         let firstField = result.trimmedOutput.split(whereSeparator: { $0 == "\t" || $0 == " " }).first
         guard let kilobytes = firstField.flatMap({ Int64($0) }) else { return nil }

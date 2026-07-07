@@ -19,8 +19,10 @@ struct DraggedProject: Codable, Transferable {
 /// while a transfer runs, and the toolbar exposes the history and settings.
 public struct MainWindowView: View {
     @Environment(MainWindowViewModel.self) private var model
+    @Environment(DashboardViewModel.self) private var dashboard
 
     @State private var showHistory = false
+    @State private var searchText = ""
 
     public init() {}
 
@@ -31,21 +33,27 @@ public struct MainWindowView: View {
             backgroundWash
 
             VStack(spacing: 0) {
+                statHeader
+
                 HStack(alignment: .top, spacing: 1) {
-                    RootColumnView(root: .archive)
+                    RootColumnView(root: .archive, searchText: searchText)
                     Divider().opacity(0.5)
-                    RootColumnView(root: .active)
+                    RootColumnView(root: .active, searchText: searchText)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
 
+            VStack {
+                Spacer()
                 if model.isRunning {
-                    progressStrip
+                    progressPill
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else if !model.selection.isEmpty {
-                    batchBar
+                    batchPill
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            .padding(.bottom, 18)
             .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.isRunning)
             .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.selection)
         }
@@ -105,6 +113,7 @@ public struct MainWindowView: View {
         .task {
             if model.projects.isEmpty { model.refresh() }
             model.loadHistory()
+            dashboard.refresh()
         }
     }
 
@@ -119,19 +128,83 @@ public struct MainWindowView: View {
         .ignoresSafeArea()
     }
 
-    private var progressStrip: some View {
+    /// Root counts, disk usage (borrowed straight from the menu-bar dashboard so nothing re-derives
+    /// it) and a name search that filters both columns below. Sits on its own material so it reads
+    /// as a distinct toolbar strip instead of blending flush into the columns underneath.
+    private var statHeader: some View {
+        HStack(spacing: 10) {
+            statChip(.archive)
+            statChip(.active)
+            searchField
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(.regularMaterial)
+        .overlay(alignment: .bottom) {
+            Divider().opacity(0.6)
+        }
+    }
+
+    private func statChip(_ root: RootKind) -> some View {
+        let count = root == .active ? dashboard.activeCount : dashboard.archiveCount
+        let size = root == .active ? dashboard.activeSizeBytes : dashboard.archiveSizeBytes
+        let tint = rootAccent(root)
+        return HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(tint)
+                .frame(width: 3, height: 30)
+            Image(systemName: root == .archive ? "archivebox.fill" : "bolt.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(tint)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 4) {
+                    Text("\(count)")
+                        .font(.system(.title3, weight: .bold))
+                        .contentTransition(.numericText())
+                    Text(rootLabel(root))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text(dashboard.isMeasuringDisk ? "Calcul…" : (size.map(ByteFormat.string) ?? "—"))
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular.tint(tint.opacity(0.12)), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            TextField("Rechercher un projet…", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.callout)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .frame(minWidth: 180)
+        .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private var progressPill: some View {
         HStack(spacing: 10) {
             ProgressView().controlSize(.small)
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     if model.batchTotal > 0 {
                         Text("Projet \(model.batchIndex)/\(model.batchTotal)")
-                            .font(.system(.caption, design: .rounded, weight: .bold))
+                            .font(.system(.caption, weight: .bold))
                             .foregroundStyle(Color.accentColor)
                     }
                     if let name = model.activeName {
                         Text(name)
-                            .font(.system(.callout, design: .rounded, weight: .semibold))
+                            .font(.system(.callout, weight: .semibold))
                     }
                 }
                 Text(model.currentStepText)
@@ -139,44 +212,42 @@ public struct MainWindowView: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
-            Spacer()
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
         .glassEffect(
             .regular.tint(Color.accentColor.opacity(0.18)),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            in: Capsule()
         )
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
     }
 
     /// Appears when one or more projects are checked: shows the count and transfers them all to
-    /// the opposite root.
-    private var batchBar: some View {
+    /// the opposite root. A floating pill rather than a full-width bar, so it reads as an overlay
+    /// above the columns instead of pushing their content up.
+    private var batchPill: some View {
         let count = model.selection.count
-        let destination = model.selectionRoot.map { $0 == .active ? RootKind.archive : .active }
+        let destination = model.selectionRoot.map { $0 == .active ? RootKind.archive : .active } ?? .archive
         return HStack(spacing: 12) {
             Text("\(count) projet\(count == 1 ? "" : "s") sélectionné\(count == 1 ? "" : "s")")
-                .font(.system(.callout, design: .rounded, weight: .semibold))
-            Spacer()
+                .font(.system(.callout, weight: .semibold))
             Button("Désélectionner") { model.clearSelection() }
                 .buttonStyle(.glass)
             Button {
                 model.prepareBatchTransfer()
             } label: {
-                Label("Transférer vers \(rootLabel(destination ?? .archive))", systemImage: "arrow.right")
+                Label("Transférer vers \(rootLabel(destination))", systemImage: "arrow.right")
             }
             .buttonStyle(.glassProminent)
+            .tint(rootAccent(destination))
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
         .glassEffect(
-            .regular.tint(Color.accentColor.opacity(0.18)),
-            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .regular.tint(rootAccent(destination).opacity(0.18)),
+            in: Capsule()
         )
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
     }
 }
 
@@ -186,6 +257,7 @@ struct RootColumnView: View {
     @Environment(MainWindowViewModel.self) private var model
 
     let root: RootKind
+    let searchText: String
 
     @State private var isTargeted = false
 
@@ -196,7 +268,7 @@ struct RootColumnView: View {
             ScrollView {
                 GlassEffectContainer(spacing: 8) {
                     LazyVStack(alignment: .leading, spacing: 8) {
-                        let groups = projectGroups(model.projects(for: root))
+                        let groups = projectGroups(filtered(model.projects(for: root)))
                         if groups.isEmpty {
                             emptyState
                         } else {
@@ -257,21 +329,36 @@ struct RootColumnView: View {
     }
 
     private var emptyState: some View {
-        Text(model.isScanning ? "Analyse…" : "Aucun projet")
+        let message: String
+        if model.isScanning {
+            message = "Analyse…"
+        } else if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+            message = "Aucun résultat"
+        } else {
+            message = "Aucun projet"
+        }
+        return Text(message)
             .font(.callout)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(.vertical, 24)
     }
 
+    /// Narrows the column to projects whose name matches the search field (all of them when empty).
+    private func filtered(_ projects: [QuickProject]) -> [QuickProject] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return projects }
+        return projects.filter { $0.candidate.name.localizedCaseInsensitiveContains(trimmed) }
+    }
+
     private var header: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Image(systemName: root == .archive ? "archivebox.fill" : "bolt.fill")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(rootAccent(root))
             VStack(alignment: .leading, spacing: 2) {
                 Text(rootLabel(root))
-                    .font(.system(.title3, design: .rounded, weight: .bold))
+                    .font(.system(.title3, design: .serif, weight: .semibold))
                 Text(model.displayPath(for: root))
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -307,7 +394,7 @@ struct MainProjectRowView: View {
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(project.candidate.name)
-                    .font(.system(.body, design: .rounded, weight: .semibold))
+                    .font(.system(.body, weight: .semibold))
                     .lineLimit(1)
                 StackTagRow(tags: sortedTags)
             }
@@ -320,15 +407,16 @@ struct MainProjectRowView: View {
             }
             .buttonStyle(.glassProminent)
             .buttonBorderShape(.circle)
+            .tint(rootAccent(project.destination))
             .disabled(disabled)
             .help("Transférer vers \(rootLabel(project.destination))")
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .glassEffect(
             isSelected ? .regular.tint(Color.accentColor.opacity(0.22)).interactive() : .regular.interactive(),
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
         )
         .scaleEffect(isHovering ? 1.01 : 1)
         .onHover { hovering in
@@ -354,18 +442,22 @@ func rootLabel(_ kind: RootKind) -> String {
 
 // MARK: - Level-1 grouping
 
-/// A level-1 grouping of a column's projects: either the loose projects sitting directly at the
-/// root (`container == nil`, shown first, un-indented) or the projects filed under one level-1
-/// folder (shown under a folder header, indented).
+/// A level-1 entry in a column: either a single loose project sitting directly at the root
+/// (`container == nil`, un-indented) or a level-1 folder's projects grouped under it (shown under
+/// a folder header, indented). Kept one-project-per-entry for loose items so every entry — folder
+/// or project — sorts into a single alphabetical spine in `projectGroups`.
 private struct ProjectGroup: Identifiable {
-    let id: String          // "" for the root-level group, else the container folder name
+    let id: String
     let container: String?
     let projects: [QuickProject]
+
+    /// What the entry sorts by: the folder name for a container, the project's own name otherwise.
+    var sortKey: String { container ?? projects.first?.candidate.name ?? "" }
 }
 
-/// Splits a column's projects into the root-level group followed by one group per level-1 container
-/// folder. Both the loose group and the folder groups are name-sorted; folder groups come after the
-/// loose ones so the on-disk hierarchy (level-1 folders holding level-2 projects) reads at a glance.
+/// One alphabetically-sorted list mixing loose projects and level-1 container folders — a folder
+/// and a project with names either side of it in the alphabet land next to each other, rather than
+/// all folders being pushed below all loose projects.
 private func projectGroups(_ projects: [QuickProject]) -> [ProjectGroup] {
     let sorted = projects.sorted {
         $0.candidate.name.localizedCaseInsensitiveCompare($1.candidate.name) == .orderedAscending
@@ -375,14 +467,13 @@ private func projectGroups(_ projects: [QuickProject]) -> [ProjectGroup] {
         $0.candidate.containerName!
     }
 
-    var groups: [ProjectGroup] = []
-    if !loose.isEmpty {
-        groups.append(ProjectGroup(id: "", container: nil, projects: loose))
+    var groups: [ProjectGroup] = loose.map {
+        ProjectGroup(id: $0.id.absoluteString, container: nil, projects: [$0])
     }
-    for name in contained.keys.sorted(by: { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }) {
-        groups.append(ProjectGroup(id: name, container: name, projects: contained[name] ?? []))
+    for (name, projectsInFolder) in contained {
+        groups.append(ProjectGroup(id: name, container: name, projects: projectsInFolder))
     }
-    return groups
+    return groups.sorted { $0.sortKey.localizedCaseInsensitiveCompare($1.sortKey) == .orderedAscending }
 }
 
 /// A header marking a level-1 folder that groups the (level-2) project rows below it. Tapping it
@@ -403,25 +494,24 @@ private struct FolderHeaderView: View {
 
     var body: some View {
         Button(action: onToggle) {
-            HStack(spacing: 7) {
+            HStack(spacing: 6) {
                 Image(systemName: selectionIcon)
-                    .font(.system(size: 15))
+                    .font(.system(size: 12))
                     .foregroundStyle(selectedCount == 0 ? Color.secondary : Color.accentColor)
-                Image(systemName: "folder.fill")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Color.accentColor)
                 Text(name)
-                    .font(.system(.subheadline, design: .rounded, weight: .bold))
+                    .font(.system(.caption, weight: .bold))
+                    .kerning(0.4)
+                    .textCase(.uppercase)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Text("\(total)")
-                    .font(.system(.caption2, design: .rounded, weight: .bold))
-                    .foregroundStyle(.secondary)
+                    .font(.system(.caption2, design: .monospaced))
                     .padding(.horizontal, 6)
                     .padding(.vertical, 1)
                     .background(Capsule().fill(Color.secondary.opacity(0.15)))
                 Spacer(minLength: 0)
             }
+            .foregroundStyle(.secondary)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

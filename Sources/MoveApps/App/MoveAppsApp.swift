@@ -5,6 +5,7 @@ import MoveAppsUI
 @main
 struct MoveAppsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @Environment(\.openWindow) private var openWindow
     @State private var rootPaths: RootPathsController
     @State private var dashboard: DashboardViewModel
     @State private var mainWindow: MainWindowViewModel
@@ -32,6 +33,8 @@ struct MoveAppsApp: App {
             MainWindowView()
                 .environment(rootPaths)
                 .environment(mainWindow)
+                .environment(dashboard)
+                .onAppear { appDelegate.openMainWindow = { openWindow(id: "main") } }
         }
 
         // Standalone window (not a sheet in the menu-bar popover, which would dismiss when the

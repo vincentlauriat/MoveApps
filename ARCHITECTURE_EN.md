@@ -49,11 +49,14 @@ Sources/
 │   ├── Settings/       # RootPathsSettings (@Observable, security-scoped bookmarks via NSOpenPanel)
 │   └── Support/        # ProcessRunner, AsyncTimeout
 ├── MoveAppsUI/        # framework, depends on Core
-│   ├── MainWindow/      # MainWindowView + MainWindowViewModel (two-column layout, native Transferable drag & drop),
-│   │                     # TransferPlanView (confirmation sheet), TransferHistoryView
-│   ├── MenuBar/         # MenuBarIconView, MenuBarQuickPickView, QuickPickViewModel
+│   ├── MainWindow/      # MainWindowView + MainWindowViewModel (Archive/Actif columns, stats+search header,
+│   │                     # floating batch/progress pills, native Transferable drag & drop), TransferPlanView
+│   │                     # (confirmation sheet), TransferHistoryView, BatchTransferView
+│   ├── MenuBar/         # MenuBarIconView, MenuBarDashboardView, DashboardViewModel, NewProjectView
+│   ├── Support/         # StackTagStyle (stack badge icon/tint), RootAccent (bespoke Archive/Actif colors)
 │   └── Settings/        # SettingsView, RootPathsController (NSOpenPanel + bookmarks)
-└── MoveApps/          # thin app target — MoveAppsApp.swift (MenuBarExtra + Window(id:) + Settings Scenes)
+└── MoveApps/          # thin app target — MoveAppsApp.swift (MenuBarExtra + Window(id:) + Settings Scenes),
+                       # AppDelegate (Dock visibility policy + Dock-icon-click reopen)
 ```
 
 ## Logic ported from `move-app.sh` (must match its behavior exactly)
@@ -68,6 +71,16 @@ Stack detection, iCloud stub (`*.icloud`) materialization, Python venv detection
 - **History**: plain JSON via an `actor TransferHistoryStore`, not SwiftData — the need (chronological list, no complex queries) doesn't justify the overhead.
 - **Distribution**: repo is private, so Sparkle's usual `raw.githubusercontent.com` appcast pattern doesn't work without auth. v1 has no network auto-update — signed/notarized DMG via `Scripts/release.sh`, distributed manually between Vincent's Macs.
 - **Documents access, revised**: `RootPathsController` (in `MoveAppsUI`) tries a `.withSecurityScope` bookmark first but falls back to a plain bookmark, because the app spawns `git`/`ditto` subprocesses via `Process` — forbidden under the App Sandbox, so it can never hold the entitlements a *true* security-scoped bookmark requires. Persistence/reconfiguration UX (`NSOpenPanel`, `UserDefaults`, stale/revoked detection surfaced as a "needs reconfiguration" flag) is otherwise exactly as originally planned.
+- **`du`'s exit code is not a success signal**: `DiskUsage.sizeBytes(of:)` (via `ProcessRunner`) must not gate on `result.didSucceed`. `du -sk` exits non-zero (`1`) whenever it hits an unreadable or locked subdirectory (e.g. `"Resource deadlock avoided"` on some `.dSYM`/`.framework` bundles — common on real project trees), while still printing a valid total to stdout. Only `result.timedOut` means no answer was obtained; a non-zero exit with output must still be parsed.
+
+## Dock icon reopen (2026-07-07)
+`NSApplicationDelegate.applicationShouldHandleReopen(_:hasVisibleWindows:)` is the only place a Dock-icon click reaches app code, but it's AppKit — it has no path to SwiftUI's `openWindow` environment action, which only exists on `App`/`Scene`/`View`. `AppDelegate` exposes `var openMainWindow: (() -> Void)?`, set once from `MoveAppsApp`'s `Window("main")` content's `.onAppear` (`appDelegate.openMainWindow = { openWindow(id: "main") }`) — the standard bridge for this class of AppKit↔SwiftUI problem. `applicationShouldHandleReopen` calls it when `hasVisibleWindows` is false, then activates the app.
+
+## Main window: stats header, search, floating action pills (2026-07-07)
+The main window gained a header strip (root counts + disk usage — reusing `DashboardViewModel`, previously menu-bar-only, now also injected into the `Window("main")` scene — and a name search filtering both columns) and replaced the full-width batch/progress bars with floating capsule "pills" overlaid at the bottom of the window instead of pushed inline in the column flow. `ProjectScanner.scan` also stopped surfacing genuinely empty container folders as fallback candidates (only non-empty, non-project folders still fall back, per its original "nothing silently disappears" contract), and `projectGroups` (in `MainWindowView`) now sorts loose projects and container folders into a single interleaved alphabetical list rather than two separately-sorted blocks.
+
+## Root accent colors — bespoke, not system (2026-07-07)
+Archive and Actif each get a dedicated adaptive `Color` (`RootAccent.swift`: a muted amber for Archive, a muted teal for Actif, both defined as dynamic `NSColor`s that switch shade between light/dark) instead of `.orange`/`Color.accentColor`. This was a deliberate fidelity call to an approved HTML design mockup: `.orange` and Vincent's system accent color are more saturated than the mockup's muted pair, and using the *system* accent for "Actif" specifically would make its intensity depend on Vincent's own accent-color choice rather than the considered two-tone identity chosen for this screen.
 
 ## Project index (`INDEX.md`) generation
 `IndexGenerator` (MoveAppsCore, a pure `Sendable` struct) builds one unified Markdown index covering **both** roots and writes an **identical copy into each** (`<active>/INDEX.md` and `<archive>/INDEX.md`) — this is the app's answer to "keep a project catalog in both directories, generated by MoveApps itself". It reuses `ProjectScanner` to enumerate the individually-transferable projects per root (so it sees exactly the same project list the transfer UI does, container folders unpacked), groups them by root → category folder → root-level, and renders `**name** — \`path\` — stack — description` per entry. Descriptions are **extracted from each project's `README.md`** (first meaningful prose line, with a hardened filter that skips headings, badges, images, raw HTML/attribute lines, ASCII-art banners, multilingual nav bars and shell/install commands, decodes HTML entities, and falls back to the H1 title). Per-project disk size is deliberately omitted (one `du` per project is too slow for a regenerate-on-every-transfer action). Triggered two ways: the menu-bar dashboard's "Régénérer l'index" button (`DashboardViewModel.regenerateIndex`, with an inline success/failure banner) and automatically after every transfer/batch completes (`MainWindowViewModel.regenerateIndex`, fire-and-forget off the main actor). Both roots being identical means some relative links can only resolve from their own root's copy — so the location is rendered as a plain `\`container/name\`` path rather than a clickable link, avoiding broken links across the two identical copies.

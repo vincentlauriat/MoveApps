@@ -54,7 +54,7 @@
 - [x] Phase 2 — Menu bar UI (`MenuBarExtra`, Settings with root pickers + login item) — build green, tests untouched, **needs Vincent's interactive click-through** (agent had no screen/Accessibility access to verify visually)
 - [x] Phase 3 — Main window UI (two-column view, transfer plan/progress, history, drag & drop) — mergé sur `main` et poussé (`274428f`)
 - [x] Phase 4 — `Scripts/release.sh` full pipeline (codesign/notarize/DMG). **Terminée 2026-07-03** : notarisation débloquée en réutilisant le profil trousseau générique `AppliMacVincentGithub` (déjà utilisé par `MarkdownViewer`/`RTKInfos`, même Apple ID/équipe — trouvé en s'inspirant du `Scripts/release.sh` de `MarkdownViewer`, aucune action manuelle de Vincent nécessaire finalement). `./Scripts/release.sh 0.1.0` exécuté pour de vrai : build Release → signature Developer ID + Hardened Runtime → DMG → notarisation Apple (`status: Accepted`) → stapling. Vérifié indépendamment : `spctl -a -t exec` → `source=Notarized Developer ID`, `stapler validate` → OK, `codesign --verify --deep --strict` → OK. DMG distribuable dans `release/MoveApps-0.1.0.dmg`.
-- [ ] Optionnel, non bloquant : AppIcon réel (`Assets.xcassets/AppIcon.appiconset` n'a que des slots vides) — l'app build et se notarise sans, juste sans icône personnalisée
+- [x] AppIcon réel — fait le 2026-07-03 (squircle dégradé bleu + flèches bidirectionnelles, `Scripts/make-app-icon.swift`), DMG 0.1.0 régénéré avec l'icône le 2026-07-04. Cette ligne était restée cochée « optionnel » par erreur de synchro doc.
 - [x] Phase 5 — comparaison stack detection bash vs Swift (`git node python` sur les deux), round-trip synthétique sur les vraies racines (deux legs `.ok`), round-trip réel sur `LinkManager` (choisi par Vincent) — checksums + git status identiques avant/après, venv fonctionnel
 - [x] Bug trouvé + corrigé via le round-trip réel : `VenvManager.recreate()` perdait TOUS les paquets d'un venv si un seul pin exact devenait indisponible (ex. version retirée de PyPI) ; corrigé avec un repli paquet-par-paquet + test de régression déterministe. `LinkManager` réparé manuellement puis re-vérifié avec le correctif (2 legs `.ok`, 0 avertissement)
 - [ ] Later (not blocking v1): private Sparkle feed for auto-update (GitHub Releases + PAT, or similar) once the app is stable
@@ -89,3 +89,17 @@
 - [x] **8 tests `IndexGeneratorTests`**, suite complète **39 tests / 12 suites verte**, `BUILD SUCCEEDED`. Vrais `INDEX.md` générés dans les deux racines (104 projets : 25 actifs + 79 archivés), fichiers byte-identiques.
 - [ ] **À valider visuellement par Vincent** : le bouton « Régénérer l'index » du tableau de bord et le bandeau de résultat (pas d'accès écran ici).
 - [ ] Optionnel : taille disque par projet dans l'index (volontairement omise pour l'instant — un `du` par projet ralentirait la régénération auto à chaque transfert).
+
+## MoveApps.app — réouverture Dock + refonte visuelle fenêtre principale (2026-07-07)
+- [x] **Réouverture au clic sur l'icône Dock** : `AppDelegate.applicationShouldHandleReopen` + closure `openMainWindow` câblée depuis `MoveAppsApp`. Build OK ; **test manuel du clic Dock non effectué** (pas de permission Accessibilité dans ce terminal pour l'automatiser, Vincent devait tester lui-même — pas de retour explicite reçu).
+- [x] **Piste A choisie parmi 4 mockups** : bandeau de stats Archive/Actif (compteur + taille disque, réutilise `DashboardViewModel`) + recherche filtrant les deux colonnes, barre de sélection/progression en pilule flottante.
+- [x] **Bug `DiskUsage` corrigé** : `du -sk` sort en code 1 sur les sous-dossiers verrouillés/`.dSYM` alors que le total est valide — ne plus se fier à `didSucceed`, seulement à `timedOut`. Timeout 60→120s.
+- [x] **Dossiers vides masqués** dans `ProjectScanner` (ex. `_En cours`).
+- [x] **Tri alphabétique unifié** : dossiers-conteneurs et projets isolés entrelacés dans un seul ordre au lieu de deux blocs séparés.
+- [x] **Passe d'élégance visuelle** (plusieurs rounds, contre le mockup approuvé) : couleurs Archive/Actif sur mesure (`RootAccent.swift`, ambre + teal désaturés adaptatifs clair/sombre) au lieu de `.orange`/`Color.accentColor`, New York pour les titres de colonne, suppression de `design: .rounded` partout, en-têtes de dossier en petites majuscules discrètes sans icône, rayon des cartes réduit (14→10), badges de stack neutralisés (tint forcé explicite).
+- [ ] **À valider visuellement par Vincent** : dernière capture reçue datait d'avant les 2 derniers correctifs (teal « Actif » sur mesure + neutralisation forcée des badges) — session terminée sans nouvelle capture de confirmation. Reprendre par une capture fraîche avant d'aller plus loin sur le look. Release 0.2.0 sortie sans attendre cette validation (décision explicite de Vincent) — traiter tout retour visuel comme suivi, pas comme régression.
+
+## Release 0.2.0 (2026-07-07)
+- [x] `project.yml` bumpé `0.1.0` → `0.2.0`, build Release vérifié (`BUILD SUCCEEDED` après nettoyage d'un cache SPM référençant l'ancien chemin pré-déplacement `~/DevApps/MoveApps`).
+- [ ] DMG 0.2.0 signé + notarisé + staplé via `Scripts/release.sh 0.2.0`.
+- [ ] Release GitHub créée avec le DMG en asset.

@@ -34,8 +34,8 @@ public struct IndexGenerator: Sendable {
     /// URLs on success, or `.failed` on the first write error (a missing root is skipped, not an
     /// error — the other copy is still written).
     @discardableResult
-    public func write(roots: RootLocations, now: Date = Date()) -> IndexGenerationResult {
-        let markdown = makeMarkdown(roots: roots, now: now)
+    public func write(roots: RootLocations, now: Date = Date(), sizes: [URL: Int64] = [:]) -> IndexGenerationResult {
+        let markdown = makeMarkdown(roots: roots, now: now, sizes: sizes)
         var written: [URL] = []
         for root in [roots.active, roots.archive] {
             // Skip a root that isn't mounted/present rather than failing the whole run — one Mac
@@ -54,7 +54,7 @@ public struct IndexGenerator: Sendable {
 
     /// Builds the full Markdown document covering both roots. Exposed separately so tests can
     /// assert on the content without touching the real roots.
-    public func makeMarkdown(roots: RootLocations, now: Date = Date()) -> String {
+    public func makeMarkdown(roots: RootLocations, now: Date = Date(), sizes: [URL: Int64] = [:]) -> String {
         let active = scanner.scan(roots.active).sorted(by: Self.byName)
         let archive = scanner.scan(roots.archive).sorted(by: Self.byName)
 
@@ -70,8 +70,8 @@ public struct IndexGenerator: Sendable {
         out += "description (extraite du README).\n\n"
         out += "---\n\n"
 
-        out += section(title: "🟢 Actif", subtitle: displayPath(roots.active), projects: active)
-        out += section(title: "📦 Archive", subtitle: displayPath(roots.archive), projects: archive)
+        out += section(title: "🟢 Actif", subtitle: displayPath(roots.active), projects: active, sizes: sizes)
+        out += section(title: "📦 Archive", subtitle: displayPath(roots.archive), projects: archive, sizes: sizes)
 
         out += "---\n\n"
         out += "*Index généré automatiquement par MoveApps.app "
@@ -83,7 +83,7 @@ public struct IndexGenerator: Sendable {
     // MARK: - Rendering
 
     /// One root's section: category folders first (sorted), then loose root-level projects.
-    private func section(title: String, subtitle: String, projects: [ProjectCandidate]) -> String {
+    private func section(title: String, subtitle: String, projects: [ProjectCandidate], sizes: [URL: Int64]) -> String {
         var out = "## \(title) — `\(subtitle)` (\(projects.count) projet\(plural(projects.count)))\n\n"
         if projects.isEmpty {
             out += "_Aucun projet._\n\n"
@@ -104,7 +104,7 @@ public struct IndexGenerator: Sendable {
         for container in byContainer.keys.sorted(by: { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }) {
             out += "### \(container)/\n\n"
             for project in (byContainer[container] ?? []).sorted(by: Self.byName) {
-                out += line(for: project, container: container)
+                out += line(for: project, container: container, sizes: sizes)
             }
             out += "\n"
         }
@@ -112,18 +112,19 @@ public struct IndexGenerator: Sendable {
         if !loose.isEmpty {
             out += "### Racine\n\n"
             for project in loose.sorted(by: Self.byName) {
-                out += line(for: project, container: nil)
+                out += line(for: project, container: nil, sizes: sizes)
             }
             out += "\n"
         }
         return out
     }
 
-    private func line(for project: ProjectCandidate, container: String?) -> String {
+    private func line(for project: ProjectCandidate, container: String?, sizes: [URL: Int64]) -> String {
         let relative = container.map { "\($0)/\(project.name)" } ?? project.name
         var line = "- **\(project.name)** — `\(relative)`"
         let stack = stackLabel(project.stackTags)
         if !stack.isEmpty { line += " — \(stack)" }
+        if let size = sizes[project.path.standardizedFileURL] { line += " — \(ByteFormat.string(size))" }
         if let description = description(for: project) { line += " — \(description)" }
         line += "\n"
         return line

@@ -15,7 +15,8 @@ struct MoveAppsApp: App {
         _rootPaths = State(initialValue: controller)
         _dashboard = State(initialValue: DashboardViewModel(rootPaths: controller))
         let historyStore = TransferHistoryStore(fileURL: MainWindowViewModel.defaultHistoryURL())
-        _mainWindow = State(initialValue: MainWindowViewModel(rootPaths: controller, historyStore: historyStore))
+        let sizeCache = ProjectSizeCache()
+        _mainWindow = State(initialValue: MainWindowViewModel(rootPaths: controller, historyStore: historyStore, sizeCache: sizeCache))
     }
 
     var body: some Scene {

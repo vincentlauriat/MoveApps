@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-07 (Release 0.2.0 shipped + installed; showInDock kept on; visual polish still awaiting Vincent's explicit confirmation)
+last_updated: 2026-07-12 (Phase 6 — archive checkout lock + per-project size — implemented on feature/archive-checkout-lock, tests+build green, pending Vincent's go-ahead to merge)
 ---
 
 # Project Memory — MoveApps
@@ -250,3 +250,17 @@ No Accessibility permission was available in this terminal to script a click (sa
 Vincent also decided to **keep `showInDock=true` permanently** (it was `false`/menu-bar-only before this session) rather than reverting the value Claude changed to force a screenshot — a deliberate product decision, not just a leftover of testing.
 
 Unrelated side-quest handled mid-session (not a MoveApps.app change, logged here only for continuity): Vincent asked to dedupe two `vincentlauriat.github.io` checkouts (`~/DevApps/vincentlauriat.github.io` vs `~/DevApps/WebSites/vincentlauriat.github.io`), assuming the `WebSites` one was current. `git log`/`rev-list --left-right --count` showed the opposite — the root copy was in sync with `origin/main` (0/0) while `WebSites` was 4 commits behind. Fast-forward-pulled `WebSites` to match, verified byte-identical with `diff -rq`, then deleted the root copy — outcome matched Vincent's goal (keep `WebSites`) without losing any of the 4 commits.
+
+## Archive checkout lock + per-project size (2026-07-12)
+
+Vincent's framing: turn the Archive into a real multi-Mac referential — a project there is either fully present or just a reference (currently checked out somewhere), never both, with a visible trace of which Mac took it and when so another Mac doesn't take it by mistake. Also wanted disk size on every project line, not just a root-level global total (previously deliberately omitted from `IndexGenerator` for `du`-cost reasons — see the 2026-07-04 index-generation section above).
+
+Confirmed with Vincent before implementing: double check-out is a **hard block** (not warn-and-override), size is shown in **both** the main window and `INDEX.md` via **background/cached** computation (no new `du` on the transfer hot path), and a manual **"Libérer"** action exists for stale/erroneous locks. Full option set and rationale in `PLAN.md` Phase 6.
+
+**Key risk caught before implementing**, via an advisor review of the initial design: the Archive root is iCloud Drive-backed, and a hidden marker file's *content* can be evicted to a `.name.icloud` placeholder locally, reading as empty — which would have silently defeated the whole feature (a Mac would see an "empty" slot and re-take an already-checked-out project). Fix: the checkout marker's **filename** itself (`MOVEAPPS-CHECKOUT__<host>__<date>.json`) carries the essential facts, since names survive eviction (only wrapped with a leading dot + `.icloud` suffix) while content does not; one regex matches both the plain and evicted forms. `CheckoutReferenceStoreTests` constructs a real evicted-placeholder file on disk to prove this holds, not just an assumption.
+
+Implemented by a delegated executor agent on `feature/archive-checkout-lock`, following the `PLAN.md` Phase 6 spec closely. One real, worth-recording deviation found and fixed before commit: the spec's hostname source (`ProcessInfo.processInfo.hostName`) resolves to an ISP reverse-DNS string on Vincent's actual network (`...ipv6.abo.wanadoo.fr`) rather than the Mac's name — caught by the implementing agent testing on the real machine, flagged instead of silently worked around, fixed by switching to `Host.current().localizedName` (`ProcessInfo` kept only as a fallback) before anything was committed.
+
+`CheckoutReferenceStore.read` derives `hostName`/`takenAt` from the marker's (sanitized) filename, never from JSON content alone — `destinationPath`/`sizeBytes` are content-only bonus fields that degrade to `nil` gracefully. `TransferPipeline`'s existing "onyx" safety invariant (critical git-deletion warnings block source deletion) is unmodified and takes priority: the checkout marker is only written when the source is confirmed safely gone (`sourceDeleted && !isCritical`), covered by a dedicated regression test (`criticalPathWritesNoMarker`).
+
+49 tests / 13 suites green (12 new: `CheckoutReferenceStoreTests` ×3, `TransferPipelineTests` ×5, plus `ProjectScannerTests`/`IndexGeneratorTests` extensions), `./Scripts/build.sh` → BUILD SUCCEEDED. Not committed to `main` yet — reviewed on the feature branch, pending Vincent's go-ahead to merge. **Not yet validated**: a real two-Mac round trip (take on Mac A, confirm Mac B sees the lock, release, check back in) — only exercised against synthetic fixtures so far, same "not yet exercised in practice" caveat as the original `.icloud` stub-materialization path noted in the legacy rollout section above.

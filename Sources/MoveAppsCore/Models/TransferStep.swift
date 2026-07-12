@@ -20,6 +20,7 @@ public enum TransferStep: Sendable {
     case reinstallingNodeModules
     case creatingCompatibilitySymlink
     case verifyingGitAfter
+    case measuringSize
     case scanningResidualPaths
     case scanningSymlinks
     case finished(TransferResult)

@@ -1,6 +1,6 @@
 ---
 name: move-apps-project
-last_updated: 2026-07-12 (Release 0.3.0 published: Phase 6 merged to main + Sparkle auto-update wired, repo now public)
+last_updated: 2026-07-12 (Release 0.3.0 published + local machine cleaned up to match: Phase 6 merged to main, Sparkle auto-update wired, repo now public, /Applications updated to 0.3.0, stale local versions/build artifacts removed)
 ---
 
 # Project Memory — MoveApps
@@ -280,3 +280,5 @@ Caught before shipping: `CFBundleVersion` (the build number Sparkle actually com
 `./Scripts/release.sh 0.3.0` ran clean end to end and was independently re-verified beyond its own success message: mounted the DMG and ran `spctl -a -t exec` (`accepted / source=Notarized Developer ID`) and `codesign --verify --deep --strict` against the `.app` inside (the DMG container itself isn't a signed object, same caveat noted for 0.2.0 above), plus a read-through of the generated `appcast.xml` confirming the enclosure URL matches the release asset about to be published. Release notes written to `release/release-notes-0.3.0.md` (gitignored, local-only — passed to `gh release create --notes-file`). Published as GitHub release `v0.3.0` with the DMG as an asset, `appcast.xml` committed and pushed to `main` so `raw.githubusercontent.com` serves it.
 
 **Not yet validated**: an actual Sparkle update check/install cycle on a real second Mac (only the appcast/signature mechanics were verified, not an end-to-end "Mac B was on 0.2.0, Sparkle offered and installed 0.3.0" run) — first install on any Mac still has to be the manual DMG per Sparkle's own model (it updates an existing install, it doesn't bootstrap one), only *subsequent* releases benefit from auto-update.
+
+**Local machine cleanup, same session**: Vincent asked to clean up "the versions on the machine" right after the release. Inventory before touching anything: `/Applications/MoveApps.app` was still the stale `0.2.0` install from the 2026-07-07 post-release check; `release/` held all three DMGs (`0.1.0`/`0.2.0`/`0.3.0`); the project's local `build/` (`-derivedDataPath build`) and the global Xcode DerivedData folder for MoveApps together held ~590M of regenerable build output; no stray MoveApps process, no forgotten DMG/DerivedData elsewhere (Downloads, Desktop, other project roots), no mounted volume left attached. Cleaned: `/Applications/MoveApps.app` swapped for the real `0.3.0` DMG's `.app` (re-verified `spctl`/`CFBundleShortVersionString` after the swap, not just assumed from the copy succeeding), the two superseded local DMGs deleted (both still permanently retrievable from their GitHub release tags, so nothing was actually lost), and both build-artifact directories removed (pure cache, regenerate automatically on the next build/release run).

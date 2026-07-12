@@ -263,3 +263,9 @@
 
 ### Validation
 - `release/MoveApps-0.3.0.dmg`: notarized (`status: Accepted`), stapled (`stapler validate` OK), independently re-verified (`spctl -a -t exec` → `accepted / source=Notarized Developer ID`, `codesign --verify --deep --strict` OK), Sparkle-signed, `appcast.xml` well-formed and pointing at the matching GitHub release asset URL.
+- `appcast.xml`/DMG confirmed reachable without auth after push: `raw.githubusercontent.com/vincentlauriat/MoveApps/main/appcast.xml` and the `v0.3.0` release asset both return successfully over plain HTTP.
+
+### Removed
+- `/Applications/MoveApps.app` updated in place from the stale `0.2.0` install to `0.3.0` (re-verified notarized after the swap).
+- Old local DMGs `release/MoveApps-0.1.0.dmg` / `MoveApps-0.2.0.dmg` deleted (still permanently available as GitHub release assets under their own tags — only the redundant local copies were removed).
+- Regenerable build artifacts cleared: the project's local `build/` (`-derivedDataPath build`, 427M) and the global Xcode DerivedData folder for MoveApps (162M) — both recreated automatically by the next `./Scripts/build.sh`/`./Scripts/release.sh` run.

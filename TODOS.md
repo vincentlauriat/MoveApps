@@ -109,9 +109,16 @@
 - [x] `Scripts/release.sh` : signature Sparkle EdDSA + génération `appcast.xml` en fin de pipeline
 - [x] `CFBundleVersion` corrigé (`1`→`2`, était resté figé depuis 0.1.0 — aurait cassé la détection de mise à jour Sparkle silencieusement)
 - [x] Release `v0.3.0` publiée : DMG signé Developer ID + notarisé (Accepted) + staplé + signé Sparkle, vérification indépendante OK, `appcast.xml` poussé sur `main`
+- [x] `appcast.xml` + DMG confirmés accessibles publiquement sans authentification après push (`raw.githubusercontent.com` + asset de release)
 - [ ] **Important — à faire par Vincent** : déplacer `~/.sparkle-keys-backup/MoveApps-private-key-backup.txt` vers un gestionnaire de mots de passe puis supprimer le fichier en clair
 - [ ] Installer `MoveApps-0.3.0.dmg` manuellement une première fois sur chaque autre Mac (le premier install reste manuel — Sparkle met à jour une install existante, il n'en crée pas une)
 - [ ] À valider : un vrai cycle de mise à jour Sparkle de bout en bout (Mac sur 0.2.0/0.3.0 détecte et installe une version suivante) — seule la mécanique appcast/signature a été vérifiée jusqu'ici
+
+## MoveApps.app — ménage des versions locales (2026-07-12)
+- [x] `/Applications/MoveApps.app` mis à jour 0.2.0 → 0.3.0 (re-vérifié notarisé après remplacement)
+- [x] Anciens DMG locaux supprimés (`0.1.0`, `0.2.0` — conservés sur GitHub Releases), `release/` ne garde que `0.3.0`
+- [x] `build/` local (427 Mo) + DerivedData Xcode globale MoveApps (162 Mo) supprimés — régénérables au prochain build
+- [x] Vérifié : aucun DMG/DerivedData MoveApps oublié ailleurs sur la machine (Downloads, Desktop, autres racines), aucun process MoveApps résiduel
 
 ## MoveApps.app — réouverture Dock + refonte visuelle fenêtre principale (2026-07-07)
 - [x] **Réouverture au clic sur l'icône Dock** : `AppDelegate.applicationShouldHandleReopen` + closure `openMainWindow` câblée depuis `MoveAppsApp`. Build OK. **Réglage « Afficher dans le Dock » activé de façon définitive** (2026-07-07, décision explicite de Vincent — `defaults write com.vincent.MoveApps showInDock -bool true`) ; note technique : la fenêtre principale ne s'ouvre pas automatiquement au lancement pour cette app agent tant qu'aucune fenêtre n'a jamais été ouverte (la closure `openMainWindow` n'est capturée qu'au premier `.onAppear`) — un clic manuel (menu bar ou Dock) reste nécessaire au moins une fois par lancement ; pas de permission Accessibilité dans ce terminal pour l'automatiser.

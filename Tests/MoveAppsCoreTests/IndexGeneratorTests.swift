@@ -52,6 +52,31 @@ struct IndexGeneratorTests {
         #expect(activeIndex.contains("📦 Archive"))
     }
 
+    @Test("renders a size column when sizes are provided, omits it otherwise")
+    func rendersSizeWhenProvided() throws {
+        let base = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: base) }
+        let active = base.appendingPathComponent("DevApps", isDirectory: true)
+        let archive = base.appendingPathComponent("GitHub", isDirectory: true)
+        let fm = FileManager.default
+        try fm.createDirectory(at: active.appendingPathComponent("Solo/.git"), withIntermediateDirectories: true)
+        try fm.createDirectory(at: archive, withIntermediateDirectories: true)
+
+        let roots = RootLocations(active: active, archive: archive)
+        let generator = IndexGenerator()
+        let solo = active.appendingPathComponent("Solo")
+
+        // Without sizes: no size string.
+        let plain = generator.makeMarkdown(roots: roots)
+        #expect(plain.contains("Solo"))
+
+        // With sizes: the formatted size appears on the project's line.
+        let sized = generator.makeMarkdown(roots: roots, sizes: [solo.standardizedFileURL: 5 * 1024 * 1024])
+        let expected = ByteFormat.string(5 * 1024 * 1024)
+        #expect(sized.contains(expected))
+        #expect(!plain.contains(expected))
+    }
+
     @Test("README extraction skips headings, badges and HTML, keeping the first prose line")
     func extractsProseFromReadme() {
         let readme = """

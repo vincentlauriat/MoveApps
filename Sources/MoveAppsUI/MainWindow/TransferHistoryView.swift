@@ -137,6 +137,8 @@ struct HistoryRowView: View {
             return "Lien cassé : \(url.lastPathComponent) → \(target)"
         case .crossProjectSymlink(let url, _, let other):
             return "Lien vers un autre projet : \(url.lastPathComponent) → \(other)"
+        case .checkoutReferenceWriteFailed(let reason):
+            return "Échec d'écriture de la trace de prise : \(reason)"
         }
     }
 }

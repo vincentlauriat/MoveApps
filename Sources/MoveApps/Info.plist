@@ -17,9 +17,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.0</string>
+	<string>0.3.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>2</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.developer-tools</string>
 	<key>LSMinimumSystemVersion</key>
@@ -34,5 +34,15 @@
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/vincentlauriat/MoveApps/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>YBYe783LNZGOC/HnoDCO22EU39veSBn0f3u5ARC5c1E=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
 </dict>
 </plist>

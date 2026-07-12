@@ -99,8 +99,19 @@
 - [x] UI `MainWindowView` : ligne verrouillée (badge, « Pris par X le Y », bouton désactivé), bouton « Libérer » + confirmation, taille sur chaque ligne
 - [x] Tests : `CheckoutReferenceStoreTests` (dont un test simulant un placeholder évincé iCloud), extension `ProjectScannerTests`/`TransferPipelineTests` (5 nouveaux cas, y compris via `FaultInjectingCopier`), `IndexGeneratorTests` — **49 tests / 13 suites verts**
 - [x] Build (`./Scripts/build.sh` → BUILD SUCCEEDED) — implémenté par un agent executor délégué sur `feature/archive-checkout-lock`, relu et vérifié avant commit (correction du nom d'hôte : `Host.current().localizedName` au lieu de `ProcessInfo.hostName`, qui renvoyait un reverse-DNS FAI illisible sur le réseau réel de Vincent)
-- [ ] Revue finale + merge sur `main`
+- [x] Revue finale + merge sur `main` (`eebd5f2`, rebuild + 49 tests revérifiés après merge)
 - [ ] À valider par Vincent : comportement réel multi-Mac (deux Macs, un vrai cycle prise/retour) une fois les deux Macs synchronisés sur le même Archive iCloud — pas encore exercé en pratique, seulement sur fixtures synthétiques
+
+## MoveApps.app — Release 0.3.0 + auto-update Sparkle (2026-07-12)
+- [x] Repo `vincentlauriat/MoveApps` rendu public (choix explicite de Vincent) — condition nécessaire pour que Sparkle lise `appcast.xml`/le DMG sans identifiants
+- [x] Clé EdDSA Sparkle dédiée générée (compte trousseau `MoveApps`), sauvegarde de la clé privée dans `~/.sparkle-keys-backup/MoveApps-private-key-backup.txt` (hors dépôt, `chmod 600`)
+- [x] Câblage `SPUStandardUpdaterController` dans `MoveAppsApp.swift` (vérif en arrière-plan uniquement, jamais d'install sans confirmation) + menu « Rechercher les mises à jour… », clés `SU*` dans `project.yml`
+- [x] `Scripts/release.sh` : signature Sparkle EdDSA + génération `appcast.xml` en fin de pipeline
+- [x] `CFBundleVersion` corrigé (`1`→`2`, était resté figé depuis 0.1.0 — aurait cassé la détection de mise à jour Sparkle silencieusement)
+- [x] Release `v0.3.0` publiée : DMG signé Developer ID + notarisé (Accepted) + staplé + signé Sparkle, vérification indépendante OK, `appcast.xml` poussé sur `main`
+- [ ] **Important — à faire par Vincent** : déplacer `~/.sparkle-keys-backup/MoveApps-private-key-backup.txt` vers un gestionnaire de mots de passe puis supprimer le fichier en clair
+- [ ] Installer `MoveApps-0.3.0.dmg` manuellement une première fois sur chaque autre Mac (le premier install reste manuel — Sparkle met à jour une install existante, il n'en crée pas une)
+- [ ] À valider : un vrai cycle de mise à jour Sparkle de bout en bout (Mac sur 0.2.0/0.3.0 détecte et installe une version suivante) — seule la mécanique appcast/signature a été vérifiée jusqu'ici
 
 ## MoveApps.app — réouverture Dock + refonte visuelle fenêtre principale (2026-07-07)
 - [x] **Réouverture au clic sur l'icône Dock** : `AppDelegate.applicationShouldHandleReopen` + closure `openMainWindow` câblée depuis `MoveAppsApp`. Build OK. **Réglage « Afficher dans le Dock » activé de façon définitive** (2026-07-07, décision explicite de Vincent — `defaults write com.vincent.MoveApps showInDock -bool true`) ; note technique : la fenêtre principale ne s'ouvre pas automatiquement au lancement pour cette app agent tant qu'aucune fenêtre n'a jamais été ouverte (la closure `openMainWindow` n'est capturée qu'au premier `.onAppear`) — un clic manuel (menu bar ou Dock) reste nécessaire au moins une fois par lancement ; pas de permission Accessibilité dans ce terminal pour l'automatiser.

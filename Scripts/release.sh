@@ -20,14 +20,17 @@
 #   SIGNING_IDENTITY="Developer ID Application: …"  ./Scripts/release.sh 0.1.0
 #   NOTARY_PROFILE="AppliMacVincentGithub"          ./Scripts/release.sh 0.1.0
 #
-# Local dry run (build + sign + DMG, no notarization):
+# Local dry run (build + sign + DMG, no notarization, no Sparkle signing):
 #   SKIP_NOTARIZE=1 ./Scripts/release.sh 0.1.0
 #
-# v1 note: repo GitHub privé, pas de feed Sparkle réseau (voir MEMORY.md /
-# ARCHITECTURE.md). Ce script signe et notarise le DMG mais ne génère PAS
-# appcast.xml — distribution manuelle entre les Macs de Vincent pour l'instant.
+# Auto-update (since 2026-07-12, repo now public — see MEMORY.md): this script also
+# Sparkle-signs the DMG and (re)writes appcast.xml at the repo root. IMPORTANT: bump
+# CURRENT_PROJECT_VERSION in project.yml every release, not just MARKETING_VERSION —
+# Sparkle compares sparkle:version against the running app's CFBundleVersion, and two
+# releases sharing the same build number look identical to it (see MarkdownViewer's
+# release-full.sh for the same warning).
 #
-# Outputs release/MoveApps-<version>.dmg, fully notarized.
+# Outputs release/MoveApps-<version>.dmg, fully notarized and Sparkle-signed.
 
 set -euo pipefail
 
@@ -142,10 +145,56 @@ echo "→ Stapling notarization ticket to the DMG"
 xcrun stapler staple "$DMG"
 xcrun stapler validate "$DMG"
 
+# 6. Sign the DMG with the Sparkle EdDSA key and (re)write appcast.xml so the
+# in-app updater (Sparkle 2) can serve this version. Mirrors MarkdownViewer's
+# release-full.sh, adapted for MoveApps' own keychain account and repo.
+SPARKLE_TOOLS="$ROOT/.sparkle-tools"
+if [ ! -x "$SPARKLE_TOOLS/bin/sign_update" ]; then
+  echo "→ Fetching Sparkle tools (one-time setup)"
+  "$ROOT/Scripts/fetch-sparkle-tools.sh"
+fi
+
+echo "→ Signing $DMG with Sparkle EdDSA key (account: MoveApps)"
+SPARKLE_SIG_LINE=$("$SPARKLE_TOOLS/bin/sign_update" --account MoveApps "$DMG")
+
+# Sparkle compares <sparkle:version> against the running app's CFBundleVersion, not
+# the marketing version — read the actual build number baked into the .app.
+BUILD_NUMBER=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP/Contents/Info.plist")
+
+echo "→ Writing $ROOT/appcast.xml (sparkle:version=$BUILD_NUMBER, shortVersionString=$VERSION)"
+PUB_DATE=$(date -R)
+cat > "$ROOT/appcast.xml" <<APPCAST
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>MoveApps</title>
+    <link>https://raw.githubusercontent.com/vincentlauriat/MoveApps/main/appcast.xml</link>
+    <description>MoveApps release feed</description>
+    <language>fr</language>
+    <item>
+      <title>v$VERSION</title>
+      <pubDate>$PUB_DATE</pubDate>
+      <sparkle:version>$BUILD_NUMBER</sparkle:version>
+      <sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>https://github.com/vincentlauriat/MoveApps/releases/tag/v$VERSION</sparkle:releaseNotesLink>
+      <enclosure
+        url="https://github.com/vincentlauriat/MoveApps/releases/download/v$VERSION/MoveApps-$VERSION.dmg"
+        type="application/octet-stream"
+        $SPARKLE_SIG_LINE />
+    </item>
+  </channel>
+</rss>
+APPCAST
+
 DMG_SIZE=$(ls -lh "$DMG" | awk '{print $5}')
 echo ""
-echo "✅ Built, signed, notarized and stapled: $DMG ($DMG_SIZE)"
+echo "✅ Built, signed, notarized, stapled and Sparkle-signed: $DMG ($DMG_SIZE)"
+echo "✅ appcast.xml written for v$VERSION"
 echo ""
-echo "v1 : distribution manuelle (repo privé, pas de feed Sparkle réseau)."
-echo "Copie $DMG sur tes autres Macs (iCloud Drive perso / AirDrop) et installe-le."
-echo "Sparkle/appcast.xml : à mettre en place plus tard si besoin d'auto-update (voir TODOS.md)."
+echo "Next steps to publish:"
+echo "  1. gh release create v$VERSION $DMG --title \"v$VERSION\" --notes-file release/release-notes-$VERSION.md"
+echo "  2. git add appcast.xml && git commit -m 'docs: appcast for v$VERSION' && git push"
+echo ""
+echo "After both, Sparkle clients on older versions will be offered the update on next check."
+echo "First install on a new Mac is still manual (Sparkle updates an existing install, it doesn't bootstrap one)."

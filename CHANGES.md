@@ -249,3 +249,17 @@
 
 ### Docs
 - `PLAN.md` Phase 6 and `TODOS.md` updated with the full design and checklist.
+
+## 2026-07-12 (cont'd) — Release 0.3.0, auto-update via Sparkle
+
+### Added
+- Auto-update wiring: `SPUStandardUpdaterController` in `MoveAppsApp.swift` (background checks only, never auto-downloads/installs without confirmation — MoveApps shells out to `git`/`ditto` mid-transfer, so a forced swap mid-operation would be worse than in a document-based app), a "Rechercher les mises à jour…" menu command, and the `SUFeedURL`/`SUPublicEDKey`/`SUEnableAutomaticChecks`/`SUScheduledCheckInterval`/`SUAutomaticallyUpdate` keys in `project.yml`.
+- `Scripts/release.sh` now Sparkle-signs the DMG and (re)writes `appcast.xml` at the repo root, mirroring `MarkdownViewer`'s `release-full.sh`.
+
+### Decisions
+- The `vincentlauriat/MoveApps` GitHub repo was made **public** (Vincent's explicit choice, after being presented the alternative of hosting the appcast/DMG on a separate public surface while keeping source private) — this is what lets Sparkle fetch `appcast.xml`/the DMG via plain unauthenticated HTTP (`raw.githubusercontent.com` / GitHub Releases), the same pattern `MarkdownViewer` already uses successfully. No secret/token is embedded in the app.
+- A new, dedicated Sparkle EdDSA keychain account `MoveApps` was generated (`generate_keys --account MoveApps`) — never to be regenerated, per the same warning `MarkdownViewer`'s script carries (doing so would make every installed copy reject future updates). Private key backed up to `~/.sparkle-keys-backup/MoveApps-private-key-backup.txt` (outside the repo, `chmod 600`) — **Vincent should move this to a password manager and delete the plaintext file**.
+- `CFBundleVersion` (the Sparkle-compared build number) bumped `1` → `2` alongside the `0.3.0` marketing version — it had stayed at `1` through both `0.1.0` and `0.2.0`, which would have silently broken update detection had Sparkle been active earlier. Every future release must bump it too, not just `MARKETING_VERSION`.
+
+### Validation
+- `release/MoveApps-0.3.0.dmg`: notarized (`status: Accepted`), stapled (`stapler validate` OK), independently re-verified (`spctl -a -t exec` → `accepted / source=Notarized Developer ID`, `codesign --verify --deep --strict` OK), Sparkle-signed, `appcast.xml` well-formed and pointing at the matching GitHub release asset URL.

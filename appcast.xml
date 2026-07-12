@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>MoveApps</title>
+    <link>https://raw.githubusercontent.com/vincentlauriat/MoveApps/main/appcast.xml</link>
+    <description>MoveApps release feed</description>
+    <language>fr</language>
+    <item>
+      <title>v0.3.0</title>
+      <pubDate>Sun, 12 Jul 2026 18:21:52 +0200</pubDate>
+      <sparkle:version>2</sparkle:version>
+      <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <sparkle:releaseNotesLink>https://github.com/vincentlauriat/MoveApps/releases/tag/v0.3.0</sparkle:releaseNotesLink>
+      <enclosure
+        url="https://github.com/vincentlauriat/MoveApps/releases/download/v0.3.0/MoveApps-0.3.0.dmg"
+        type="application/octet-stream"
+        sparkle:edSignature="kldBUb8rgMxOAof7r3PRNsq89+Y8Jux0SGeZTVve1OcJ2+UuqkEjy0m2zlak0s/ye+MJxFkQ0Jq6oHedxYG4Bw==" length="2070696" />
+    </item>
+  </channel>
+</rss>

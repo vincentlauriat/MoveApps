@@ -12,10 +12,15 @@ import Foundation
 /// case there is nothing to transfer and it's skipped outright.
 public struct ProjectScanner: Sendable {
     private let detector: StackDetector
+    private let checkoutStore: CheckoutReferenceStore
     private var fileManager: FileManager { .default }
 
-    public init(detector: StackDetector = StackDetector()) {
+    public init(
+        detector: StackDetector = StackDetector(),
+        checkoutStore: CheckoutReferenceStore = CheckoutReferenceStore()
+    ) {
         self.detector = detector
+        self.checkoutStore = checkoutStore
     }
 
     public func scan(_ root: URL) -> [ProjectCandidate] {
@@ -29,6 +34,15 @@ public struct ProjectScanner: Sendable {
         for entry in entries {
             guard isDirectory(entry) else { continue }
 
+            // Checkout markers are checked first, before `isProjectRoot`/decomposition: a taken
+            // slot must surface as a locked candidate, and — since an iCloud-evicted marker is
+            // dot-prefixed — the `.skipsHiddenFiles` decomposition below would otherwise see the
+            // slot as empty and drop it from the list entirely.
+            if let checkout = checkoutStore.read(at: entry) {
+                result.append(makeCheckoutCandidate(entry, container: nil, checkout: checkout))
+                continue
+            }
+
             if detector.isProjectRoot(at: entry) {
                 result.append(makeCandidate(entry))
                 continue
@@ -41,13 +55,20 @@ public struct ProjectScanner: Sendable {
             )) ?? []
             guard !allChildren.isEmpty else { continue }  // nothing in it to transfer
 
-            let children = allChildren.filter { isDirectory($0) && detector.isProjectRoot(at: $0) }
+            let container = entry.lastPathComponent
+            var containerCandidates: [ProjectCandidate] = []
+            for child in allChildren where isDirectory(child) {
+                if let checkout = checkoutStore.read(at: child) {
+                    containerCandidates.append(makeCheckoutCandidate(child, container: container, checkout: checkout))
+                } else if detector.isProjectRoot(at: child) {
+                    containerCandidates.append(makeCandidate(child, container: container))
+                }
+            }
 
-            if children.isEmpty {
+            if containerCandidates.isEmpty {
                 result.append(makeCandidate(entry))
             } else {
-                let container = entry.lastPathComponent
-                result.append(contentsOf: children.map { makeCandidate($0, container: container) })
+                result.append(contentsOf: containerCandidates)
             }
         }
         return result
@@ -64,7 +85,7 @@ public struct ProjectScanner: Sendable {
         ) else { return [] }
 
         return entries
-            .filter { isDirectory($0) && !detector.isProjectRoot(at: $0) }
+            .filter { isDirectory($0) && checkoutStore.read(at: $0) == nil && !detector.isProjectRoot(at: $0) }
             .map { $0.lastPathComponent }
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
@@ -79,6 +100,17 @@ public struct ProjectScanner: Sendable {
             path: url,
             stackTags: detector.detect(at: url),
             containerName: container
+        )
+    }
+
+    private func makeCheckoutCandidate(_ url: URL, container: String?, checkout: CheckoutReference) -> ProjectCandidate {
+        ProjectCandidate(
+            name: url.lastPathComponent,
+            path: url,
+            stackTags: [],
+            sizeBytes: checkout.sizeBytes,
+            containerName: container,
+            checkoutReference: checkout
         )
     }
 }

@@ -18,6 +18,8 @@ public actor TransferPipeline {
     private let nodeInstaller: NodeModulesInstaller
     private let symlinkVerifier: SymlinkVerifier
     private let residualScanner: ResidualPathScanner
+    private let checkoutStore: CheckoutReferenceStore
+    private let diskUsage: DiskUsage
     private var fileManager: FileManager { .default }
 
     public init(
@@ -29,7 +31,9 @@ public actor TransferPipeline {
         mover: DirectoryMover = DirectoryMover(),
         nodeInstaller: NodeModulesInstaller = NodeModulesInstaller(),
         symlinkVerifier: SymlinkVerifier = SymlinkVerifier(),
-        residualScanner: ResidualPathScanner = ResidualPathScanner()
+        residualScanner: ResidualPathScanner = ResidualPathScanner(),
+        checkoutStore: CheckoutReferenceStore = CheckoutReferenceStore(),
+        diskUsage: DiskUsage = DiskUsage()
     ) {
         self.roots = roots
         self.stackDetector = stackDetector
@@ -40,7 +44,17 @@ public actor TransferPipeline {
         self.nodeInstaller = nodeInstaller
         self.symlinkVerifier = symlinkVerifier
         self.residualScanner = residualScanner
+        self.checkoutStore = checkoutStore
+        self.diskUsage = diskUsage
     }
+
+    private static let checkoutDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "fr_FR")
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter
+    }()
 
     public func run(_ plan: TransferPlan) -> AsyncStream<TransferStep> {
         AsyncStream { continuation in
@@ -52,6 +66,14 @@ public actor TransferPipeline {
     }
 
     private func execute(_ plan: TransferPlan, emit: @Sendable (TransferStep) -> Void) async {
+        // Belt-and-suspenders under the UI-level hard block: a project already checked out on
+        // another Mac is refused outright, without touching the filesystem.
+        if let checkout = plan.project.checkoutReference {
+            let when = Self.checkoutDateFormatter.string(from: checkout.takenAt)
+            emit(.finished(.failed(reason: "projet déjà pris par \(checkout.hostName) le \(when)", destinationURL: nil)))
+            return
+        }
+
         let source = plan.project.path
         // Place the project under an optional category folder on the destination side, creating
         // that folder if needed — this is what lets a project keep or change its container folder
@@ -63,6 +85,16 @@ public actor TransferPipeline {
             destinationDir = roots.url(for: plan.to)
         }
         let destination = destinationDir.appendingPathComponent(plan.project.name)
+
+        // Active → Archive check-in: free the destination slot by clearing any checkout marker
+        // sitting exactly at it, plus any orphaned marker filed under a different container — so
+        // the "destination already exists" guard below sees a genuinely free slot.
+        if plan.to == .archive {
+            if checkoutStore.read(at: destination) != nil {
+                checkoutStore.clear(at: destination)
+            }
+            checkoutStore.clearOrphans(named: plan.project.name, under: roots.url(for: .archive))
+        }
 
         guard !fileManager.fileExists(atPath: destination.path) else {
             emit(.finished(.failed(reason: "destination already exists: \(destination.path)", destinationURL: destination)))
@@ -134,6 +166,20 @@ public actor TransferPipeline {
         } else {
             try? fileManager.removeItem(at: source)
             sourceDeleted = !fileManager.fileExists(atPath: source.path)
+        }
+
+        // 7b. Archive → Active check-out: once the source slot is confirmed gone (and the onyx
+        //     invariant held — no critical loss), leave a marker at the original path so another
+        //     Mac sees it as "taken", not free. A write failure is surfaced, never swallowed:
+        //     the "re-taken by mistake" hole reopens if this fails silently.
+        if plan.from == .archive && sourceDeleted && !isCritical {
+            emit(.measuringSize)
+            let size = await diskUsage.sizeBytes(of: destination)
+            do {
+                try checkoutStore.write(at: source, destinationPath: destination.path, sizeBytes: size)
+            } catch {
+                warnings.append(.checkoutReferenceWriteFailed(reason: error.localizedDescription))
+            }
         }
 
         // 8. Recreate venvs at the new location.

@@ -38,10 +38,12 @@ public final class MainWindowViewModel {
 
     private let rootPaths: RootPathsController
     private let historyStore: TransferHistoryStore
+    private let sizeCache: ProjectSizeCache
 
-    public init(rootPaths: RootPathsController, historyStore: TransferHistoryStore) {
+    public init(rootPaths: RootPathsController, historyStore: TransferHistoryStore, sizeCache: ProjectSizeCache) {
         self.rootPaths = rootPaths
         self.historyStore = historyStore
+        self.sizeCache = sizeCache
     }
 
     /// `~/Library/Application Support/MoveApps/history.json`.
@@ -72,7 +74,68 @@ public final class MainWindowViewModel {
             let scanned = await Task.detached { ProjectListing.scanSync(locations) }.value
             self.projects = scanned
             self.isScanning = false
+            self.measureSizes(for: scanned)
         }
+    }
+
+    /// Fills each unlocked project's disk size in the background: the list already rendered, so
+    /// this never blocks it. Locked rows already carry the size recorded in their checkout marker,
+    /// so they're skipped. Cached sizes are applied immediately; the rest are measured with
+    /// bounded concurrency and fed back into both the cache and the visible rows as they land.
+    private func measureSizes(for scanned: [QuickProject]) {
+        let targets = scanned.filter { $0.candidate.checkoutReference == nil }.map(\.candidate.path)
+        guard !targets.isEmpty else { return }
+        let cache = sizeCache
+        Task {
+            var toMeasure: [URL] = []
+            for path in targets {
+                if let cached = await cache.size(for: path) {
+                    self.applySize(cached, to: path)
+                } else {
+                    toMeasure.append(path)
+                }
+            }
+            let diskUsage = DiskUsage()
+            let chunkSize = 6
+            var index = 0
+            while index < toMeasure.count {
+                let chunk = Array(toMeasure[index..<min(index + chunkSize, toMeasure.count)])
+                index += chunkSize
+                await withTaskGroup(of: (URL, Int64?).self) { group in
+                    for path in chunk {
+                        group.addTask { (path, await diskUsage.sizeBytes(of: path)) }
+                    }
+                    for await (path, size) in group {
+                        guard let size else { continue }
+                        await cache.store(size, for: path)
+                        self.applySize(size, to: path)
+                    }
+                }
+            }
+        }
+    }
+
+    /// Replaces the visible size of a single project row, matched by its stable path. A no-op if the
+    /// project has since scrolled out of the current scan (a newer refresh replaced the list).
+    private func applySize(_ bytes: Int64, to path: URL) {
+        guard let idx = projects.firstIndex(where: { $0.candidate.path == path }) else { return }
+        let current = projects[idx].candidate
+        projects[idx].candidate = ProjectCandidate(
+            id: current.id,
+            name: current.name,
+            path: current.path,
+            stackTags: current.stackTags,
+            sizeBytes: bytes,
+            containerName: current.containerName,
+            checkoutReference: current.checkoutReference
+        )
+    }
+
+    /// Clears a checkout marker (the "Libérer" action): removes only the local trace of the
+    /// check-out, never any real content, then rescans so the row disappears.
+    public func releaseCheckout(_ project: QuickProject) {
+        CheckoutReferenceStore().clear(at: project.candidate.path)
+        refresh()
     }
 
     public func loadHistory() {
@@ -88,7 +151,7 @@ public final class MainWindowViewModel {
     /// the project's own container folder (so a project filed under `Outils/` stays under an
     /// `Outils/` on the other side) — the user can change it before confirming.
     public func prepareTransfer(_ project: QuickProject) {
-        guard !isRunning else { return }
+        guard !isRunning, project.candidate.checkoutReference == nil else { return }
         pendingPlan = TransferPlan(
             project: project.candidate,
             from: project.root,
@@ -121,6 +184,7 @@ public final class MainWindowViewModel {
     /// Toggles a project's checkbox. Since a batch only moves one direction, checking a project
     /// in a different root than the current selection resets the selection to that root first.
     public func toggleSelection(_ project: QuickProject) {
+        guard project.candidate.checkoutReference == nil else { return }
         if let anySelected = selection.first,
            let existing = projects.first(where: { $0.id == anySelected }),
            existing.root != project.root {
@@ -146,13 +210,14 @@ public final class MainWindowViewModel {
     /// Like `toggleSelection`, it keeps the selection confined to a single root: toggling a folder
     /// that lives in a different root than the current selection resets the selection first.
     public func toggleFolderSelection(_ folderProjects: [QuickProject]) {
-        guard let first = folderProjects.first else { return }
+        let selectable = folderProjects.filter { $0.candidate.checkoutReference == nil }
+        guard let first = selectable.first else { return }
         if let anySelected = selection.first,
            let existing = projects.first(where: { $0.id == anySelected }),
            existing.root != first.root {
             selection.removeAll()
         }
-        let ids = folderProjects.map(\.id)
+        let ids = selectable.map(\.id)
         if ids.allSatisfy({ selection.contains($0) }) {
             ids.forEach { selection.remove($0) }
         } else {
@@ -302,7 +367,11 @@ public final class MainWindowViewModel {
     /// itself already succeeded, so a failure here only leaves a stale index (logged, not surfaced).
     private func regenerateIndex() {
         let locations = rootPaths.settings.locations
-        Task.detached { _ = IndexGenerator().write(roots: locations) }
+        let cache = sizeCache
+        Task.detached {
+            let sizes = await cache.snapshot()
+            _ = IndexGenerator().write(roots: locations, sizes: sizes)
+        }
     }
 }
 

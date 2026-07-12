@@ -50,4 +50,39 @@ struct ProjectScannerTests {
         let miscellaneous = candidates.first { $0.name == "Miscellaneous" }
         #expect(miscellaneous?.containerName == nil)
     }
+
+    @Test("surfaces checkout markers (top-level and nested) as locked candidates, not scanned projects")
+    func surfacesCheckoutMarkers() throws {
+        let root = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let store = CheckoutReferenceStore()
+        // A taken project at the top level.
+        let topSlot = root.appendingPathComponent("TakenTop", isDirectory: true)
+        try store.write(at: topSlot, destinationPath: "/x/TakenTop", sizeBytes: 2048)
+
+        // A taken project nested inside a container folder that also holds a real project.
+        let nestedSlot = root.appendingPathComponent("Outils/TakenNested", isDirectory: true)
+        try store.write(at: nestedSlot, destinationPath: nil, sizeBytes: nil)
+        try FileManager.default.createDirectory(
+            at: root.appendingPathComponent("Outils/RealOne/.git"), withIntermediateDirectories: true
+        )
+
+        let candidates = ProjectScanner().scan(root)
+
+        let top = candidates.first { $0.name == "TakenTop" }
+        #expect(top?.checkoutReference != nil)
+        #expect(top?.checkoutReference?.sizeBytes == 2048)
+        #expect(top?.sizeBytes == 2048)
+        #expect(top?.stackTags.isEmpty == true)
+        #expect(top?.containerName == nil)
+
+        let nested = candidates.first { $0.name == "TakenNested" }
+        #expect(nested?.checkoutReference != nil)
+        #expect(nested?.containerName == "Outils")
+
+        // The real sibling is still scanned normally, and the container is not surfaced itself.
+        #expect(candidates.contains { $0.name == "RealOne" && $0.checkoutReference == nil })
+        #expect(!candidates.contains { $0.name == "Outils" })
+    }
 }

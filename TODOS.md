@@ -90,16 +90,17 @@
 - [ ] **À valider visuellement par Vincent** : le bouton « Régénérer l'index » du tableau de bord et le bandeau de résultat (pas d'accès écran ici).
 - [ ] Optionnel : taille disque par projet dans l'index (volontairement omise pour l'instant — un `du` par projet ralentirait la régénération auto à chaque transfert).
 
-## MoveApps.app — Archive checkout lock (multi-Mac) + taille par projet (2026-07-12, à faire)
-- [ ] Modèle `CheckoutReference` + service `CheckoutReferenceStore` (écrire/lire/effacer, format de marqueur résistant à l'éviction iCloud — nom de fichier porteur des faits essentiels, pas seulement le contenu JSON). Voir `PLAN.md` Phase 6 pour le détail.
-- [ ] `ProjectScanner` : détection du marqueur avant la logique normale (top-level + niveau conteneur), `ProjectCandidate.checkoutReference`
-- [ ] `TransferPipeline` : pose du marqueur (Archive→Actif), effacement + balayage des orphelins (Actif→Archive), refus défensif d'un plan sur un projet déjà pris, nouveau `TransferWarning.checkoutReferenceWriteFailed`
-- [ ] `ProjectSizeCache` (en mémoire, partagé) + calcul en tâche de fond dans `MainWindowViewModel.refresh()`, sans bloquer le scan
-- [ ] `IndexGenerator` : colonne taille par ligne (repli sur cache, pas de `du` sur le chemin auto-régénération)
-- [ ] UI `MainWindowView` : ligne verrouillée (badge, « Pris par X le Y », bouton désactivé), bouton « Libérer » + confirmation, taille sur chaque ligne
-- [ ] Tests : `CheckoutReferenceStoreTests`, extension `ProjectScannerTests`/`TransferPipelineTests` (les deux nouvelles branches, y compris via `FaultInjectingCopier`), `IndexGeneratorTests`
-- [ ] Build + suite de tests vertes, revue avant merge sur `main` (feature branch dédiée)
-- [ ] À valider par Vincent : comportement réel multi-Mac (deux Macs, un vrai cycle prise/retour) une fois les deux Macs synchronisés sur le même Archive iCloud
+## MoveApps.app — Archive checkout lock (multi-Mac) + taille par projet (2026-07-12)
+- [x] Modèle `CheckoutReference` + service `CheckoutReferenceStore` (écrire/lire/effacer, format de marqueur résistant à l'éviction iCloud — nom de fichier porteur des faits essentiels, pas seulement le contenu JSON). Voir `PLAN.md` Phase 6 pour le détail.
+- [x] `ProjectScanner` : détection du marqueur avant la logique normale (top-level + niveau conteneur), `ProjectCandidate.checkoutReference`
+- [x] `TransferPipeline` : pose du marqueur (Archive→Actif), effacement + balayage des orphelins (Actif→Archive), refus défensif d'un plan sur un projet déjà pris, nouveau `TransferWarning.checkoutReferenceWriteFailed`
+- [x] `ProjectSizeCache` (en mémoire, partagé) + calcul en tâche de fond dans `MainWindowViewModel.refresh()`, sans bloquer le scan
+- [x] `IndexGenerator` : colonne taille par ligne (repli sur cache, pas de `du` sur le chemin auto-régénération)
+- [x] UI `MainWindowView` : ligne verrouillée (badge, « Pris par X le Y », bouton désactivé), bouton « Libérer » + confirmation, taille sur chaque ligne
+- [x] Tests : `CheckoutReferenceStoreTests` (dont un test simulant un placeholder évincé iCloud), extension `ProjectScannerTests`/`TransferPipelineTests` (5 nouveaux cas, y compris via `FaultInjectingCopier`), `IndexGeneratorTests` — **49 tests / 13 suites verts**
+- [x] Build (`./Scripts/build.sh` → BUILD SUCCEEDED) — implémenté par un agent executor délégué sur `feature/archive-checkout-lock`, relu et vérifié avant commit (correction du nom d'hôte : `Host.current().localizedName` au lieu de `ProcessInfo.hostName`, qui renvoyait un reverse-DNS FAI illisible sur le réseau réel de Vincent)
+- [ ] Revue finale + merge sur `main`
+- [ ] À valider par Vincent : comportement réel multi-Mac (deux Macs, un vrai cycle prise/retour) une fois les deux Macs synchronisés sur le même Archive iCloud — pas encore exercé en pratique, seulement sur fixtures synthétiques
 
 ## MoveApps.app — réouverture Dock + refonte visuelle fenêtre principale (2026-07-07)
 - [x] **Réouverture au clic sur l'icône Dock** : `AppDelegate.applicationShouldHandleReopen` + closure `openMainWindow` câblée depuis `MoveAppsApp`. Build OK. **Réglage « Afficher dans le Dock » activé de façon définitive** (2026-07-07, décision explicite de Vincent — `defaults write com.vincent.MoveApps showInDock -bool true`) ; note technique : la fenêtre principale ne s'ouvre pas automatiquement au lancement pour cette app agent tant qu'aucune fenêtre n'a jamais été ouverte (la closure `openMainWindow` n'est capturée qu'au premier `.onAppear`) — un clic manuel (menu bar ou Dock) reste nécessaire au moins une fois par lancement ; pas de permission Accessibilité dans ce terminal pour l'automatiser.

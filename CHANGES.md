@@ -232,3 +232,20 @@
 ### Changed
 - `project.yml`: `MARKETING_VERSION` / `CFBundleShortVersionString` bumped `0.1.0` → `0.2.0` — covers everything shipped since the icon-only 0.1.0 DMG: hierarchical Archive/Actif lists with folder-select headers, unified project index generation, Dock reopen, and the main-window visual redesign above.
 - Vincent chose to release with the visual-polish round still visually unconfirmed (see note above) — treat as a known follow-up, not a regression, if the next screenshot review flags something.
+
+## 2026-07-12
+
+### Added
+- `CheckoutReference` / `CheckoutReferenceStore` (`MoveAppsCore`): taking a project out of the Archive (Archive→Actif) now leaves a "taken" marker at its original Archive slot instead of just vanishing — records which Mac took it (`Host.current().localizedName`) and on which day. The essential facts (host, day) are encoded in the marker's **filename**, not only its JSON body, because the Archive root is iCloud Drive-backed and a hidden file's *content* can be evicted to a `.name.icloud` placeholder locally — the filename survives that and is still parseable via a regex matching both forms.
+- `ProjectScanner` checks for a checkout marker before its normal project-detection logic, at both root level and nested inside a container folder, and surfaces a locked `ProjectCandidate` instead of scanning it as a real project.
+- `TransferPipeline`: a project with an active checkout reference is refused outright (hard block) before touching the filesystem. Checking a project back in (Actif→Archive) clears the marker at the exact destination and sweeps for an orphaned marker filed under a different container folder than the one it was taken from.
+- Per-project disk size (previously omitted everywhere) now shown on every row in the main window and in `INDEX.md`, computed in the background after each scan (`ProjectSizeCache`, in-memory, bounded concurrency) so it never blocks the UI or adds `du` calls to the transfer/auto-index-regeneration hot path.
+- "Libérer" button on a locked Archive row in the main window: clears a stale/erroneous checkout trace (behind a confirmation dialog) without touching any real content.
+
+### Decisions
+- Double check-out is a hard block, not a warn-and-override — Vincent's explicit call; the whole point is preventing an accidental second take.
+- `ProjectSizeCache` is deliberately in-memory only, not persisted to disk — sizes are cheap to rebuild each session.
+- Host-name source changed mid-implementation from `ProcessInfo.processInfo.hostName` to `Host.current().localizedName` (with `ProcessInfo` kept only as a fallback): on Vincent's real network, `ProcessInfo.hostName` resolves to an ISP reverse-DNS string (`...ipv6.abo.wanadoo.fr`) instead of anything Mac-identifying, which would have silently defeated the "which Mac took it" point of the whole feature. Caught by testing on the real machine before commit.
+
+### Docs
+- `PLAN.md` Phase 6 and `TODOS.md` updated with the full design and checklist.

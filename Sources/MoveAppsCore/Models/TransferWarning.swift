@@ -21,6 +21,10 @@ public enum TransferWarning: Sendable, Hashable, Codable {
     case brokenSymlink(URL, target: String)
     /// A symlink under the destination points into a *different* project's tree.
     case crossProjectSymlink(URL, target: String, otherProject: String)
+    /// The Archive checkout marker couldn't be written back after an Archive → Active transfer,
+    /// leaving the source slot without a "taken" trace. Not critical (the transfer itself
+    /// succeeded), but surfaced so the hole is never silent.
+    case checkoutReferenceWriteFailed(reason: String)
 
     /// Whether this warning must escalate the overall result to `.critical`.
     public var isCritical: Bool {

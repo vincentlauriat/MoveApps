@@ -11,6 +11,9 @@ public struct ProjectCandidate: Sendable, Identifiable, Hashable, Codable {
     /// or `nil` when the project sits directly at the root. Lets the UI show where a project
     /// lives on disk even though `ProjectScanner` flattens container folders into their children.
     public let containerName: String?
+    /// Set when this "project" is really a checkout marker — the project itself is currently taken
+    /// on another Mac and only its trace remains here. `nil` for a real, fully-present project.
+    public let checkoutReference: CheckoutReference?
 
     public init(
         id: UUID = UUID(),
@@ -18,7 +21,8 @@ public struct ProjectCandidate: Sendable, Identifiable, Hashable, Codable {
         path: URL,
         stackTags: Set<StackTag> = [],
         sizeBytes: Int64? = nil,
-        containerName: String? = nil
+        containerName: String? = nil,
+        checkoutReference: CheckoutReference? = nil
     ) {
         self.id = id
         self.name = name
@@ -26,5 +30,6 @@ public struct ProjectCandidate: Sendable, Identifiable, Hashable, Codable {
         self.stackTags = stackTags
         self.sizeBytes = sizeBytes
         self.containerName = containerName
+        self.checkoutReference = checkoutReference
     }
 }

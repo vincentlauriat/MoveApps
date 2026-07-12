@@ -49,6 +49,7 @@ public enum ProjectListing {
         case .reinstallingNodeModules: return "Réinstallation de node_modules…"
         case .creatingCompatibilitySymlink: return "Création du lien de compatibilité…"
         case .verifyingGitAfter: return "Vérification git (après)…"
+        case .measuringSize: return "Mesure de la taille…"
         case .scanningResidualPaths: return "Analyse des chemins résiduels…"
         case .scanningSymlinks: return "Analyse des liens symboliques…"
         case .finished(let result):

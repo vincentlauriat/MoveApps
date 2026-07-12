@@ -291,7 +291,8 @@ struct RootColumnView: View {
                                         disabled: model.isRunning,
                                         isSelected: model.isSelected(project),
                                         onToggleSelect: { model.toggleSelection(project) },
-                                        action: { model.prepareTransfer(project) }
+                                        action: { model.prepareTransfer(project) },
+                                        onRelease: { model.releaseCheckout(project) }
                                     )
                                     .padding(.leading, group.container == nil ? 0 : 20)  // nest level-2
                                     .draggable(DraggedProject(path: project.candidate.path, root: project.root))
@@ -379,8 +380,13 @@ struct MainProjectRowView: View {
     let isSelected: Bool
     let onToggleSelect: () -> Void
     let action: () -> Void
+    let onRelease: () -> Void
 
     @State private var isHovering = false
+    @State private var confirmingRelease = false
+
+    private var checkout: CheckoutReference? { project.candidate.checkoutReference }
+    private var isLocked: Bool { checkout != nil }
 
     var body: some View {
         HStack(spacing: 10) {
@@ -390,46 +396,105 @@ struct MainProjectRowView: View {
                     .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
             }
             .buttonStyle(.plain)
+            .disabled(disabled || isLocked)
+            .opacity(isLocked ? 0.35 : 1)
             .help(isSelected ? "Désélectionner" : "Sélectionner")
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(project.candidate.name)
                     .font(.system(.body, weight: .semibold))
                     .lineLimit(1)
-                StackTagRow(tags: sortedTags)
+                if let checkout {
+                    lockLine(checkout)
+                } else {
+                    StackTagRow(tags: sortedTags)
+                }
             }
             Spacer(minLength: 8)
-            Button(action: action) {
-                Label("Transférer vers \(rootLabel(project.destination))", systemImage: "arrow.right")
-                    .labelStyle(.iconOnly)
-                    .font(.system(size: 12, weight: .bold))
-                    .frame(width: 28, height: 28)
+
+            Text(ByteFormat.string(project.candidate.sizeBytes))
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(.secondary)
+
+            if isLocked {
+                Button("Libérer") { confirmingRelease = true }
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
+                    .disabled(disabled)
+                    .help("Libérer la trace de prise de ce projet")
+            } else {
+                Button(action: action) {
+                    Label("Transférer vers \(rootLabel(project.destination))", systemImage: "arrow.right")
+                        .labelStyle(.iconOnly)
+                        .font(.system(size: 12, weight: .bold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.glassProminent)
+                .buttonBorderShape(.circle)
+                .tint(rootAccent(project.destination))
+                .disabled(disabled)
+                .help("Transférer vers \(rootLabel(project.destination))")
             }
-            .buttonStyle(.glassProminent)
-            .buttonBorderShape(.circle)
-            .tint(rootAccent(project.destination))
-            .disabled(disabled)
-            .help("Transférer vers \(rootLabel(project.destination))")
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .glassEffect(
-            isSelected ? .regular.tint(Color.accentColor.opacity(0.22)).interactive() : .regular.interactive(),
+            glassStyle,
             in: RoundedRectangle(cornerRadius: 10, style: .continuous)
         )
+        .opacity(isLocked ? 0.85 : 1)
         .scaleEffect(isHovering ? 1.01 : 1)
         .onHover { hovering in
-            guard !disabled else { return }
+            guard !disabled, !isLocked else { return }
             withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                 isHovering = hovering
             }
         }
+        .confirmationDialog(
+            "Libérer « \(project.candidate.name) » ?",
+            isPresented: $confirmingRelease,
+            titleVisibility: .visible
+        ) {
+            Button("Libérer la trace", role: .destructive) { onRelease() }
+            Button("Annuler", role: .cancel) {}
+        } message: {
+            Text("Ceci supprime uniquement la trace de prise, pas le contenu réel qui reste sur l'autre Mac. "
+                 + "À utiliser seulement si vous êtes sûr que personne d'autre ne travaille dessus.")
+        }
+    }
+
+    private var glassStyle: Glass {
+        if isLocked {
+            return .regular.tint(rootAccent(.archive).opacity(0.14))
+        }
+        return isSelected ? .regular.tint(Color.accentColor.opacity(0.22)).interactive() : .regular.interactive()
+    }
+
+    /// The lock badge line shown in place of the stack tags on a checked-out row.
+    private func lockLine(_ checkout: CheckoutReference) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 10, weight: .semibold))
+            Text("Pris par \(checkout.hostName) le \(Self.checkoutDate.string(from: checkout.takenAt))")
+                .font(.caption)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .foregroundStyle(rootAccent(.archive))
     }
 
     private var sortedTags: [StackTag] {
         project.candidate.stackTags.sorted { $0.rawValue < $1.rawValue }
     }
+
+    private static let checkoutDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "fr_FR")
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        return formatter
+    }()
 }
 
 /// French label for a root, matching the convention used across the UI.

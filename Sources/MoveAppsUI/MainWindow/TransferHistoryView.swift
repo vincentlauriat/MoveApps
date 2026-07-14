@@ -76,7 +76,7 @@ struct HistoryRowView: View {
             if !record.warnings.isEmpty {
                 VStack(alignment: .leading, spacing: 3) {
                     ForEach(Array(record.warnings.enumerated()), id: \.offset) { _, warning in
-                        Label(warningText(warning), systemImage: "exclamationmark.triangle")
+                        Label(ProjectListing.describe(warning), systemImage: "exclamationmark.triangle")
                             .font(.caption2)
                             .foregroundStyle(warning.isCritical ? .red : .orange)
                     }
@@ -119,26 +119,4 @@ struct HistoryRowView: View {
         }
     }
 
-    private func warningText(_ warning: TransferWarning) -> String {
-        switch warning {
-        case .venvRecreatedEmpty(let venv):
-            return "Venv recréé sans liste de paquets : \(venv.lastPathComponent)"
-        case .venvPartialInstall(let venv, let failed):
-            return "Venv \(venv.lastPathComponent) : \(failed.count) paquet(s) non réinstallé(s)"
-        case .nodeReinstallFailed(let reason):
-            return "Échec réinstallation node_modules : \(reason)"
-        case .gitDirtyCountChanged(let before, let after):
-            return "Nombre de fichiers modifiés git différent (\(before) → \(after))"
-        case .gitDeletedFilesDetected(let paths):
-            return "Fichiers suivis supprimés détectés : \(paths.count)"
-        case .residualPathReferences(let files):
-            return "Références au chemin source résiduelles : \(files.count) fichier(s)"
-        case .brokenSymlink(let url, let target):
-            return "Lien cassé : \(url.lastPathComponent) → \(target)"
-        case .crossProjectSymlink(let url, _, let other):
-            return "Lien vers un autre projet : \(url.lastPathComponent) → \(other)"
-        case .checkoutReferenceWriteFailed(let reason):
-            return "Échec d'écriture de la trace de prise : \(reason)"
-        }
-    }
 }

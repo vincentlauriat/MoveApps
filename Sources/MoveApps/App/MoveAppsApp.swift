@@ -10,6 +10,7 @@ struct MoveAppsApp: App {
     @State private var rootPaths: RootPathsController
     @State private var dashboard: DashboardViewModel
     @State private var mainWindow: MainWindowViewModel
+    @State private var debugLog: DebugLogStore
 
     private let updaterController: SPUStandardUpdaterController = {
         let controller = SPUStandardUpdaterController(
@@ -31,7 +32,14 @@ struct MoveAppsApp: App {
         _dashboard = State(initialValue: DashboardViewModel(rootPaths: controller))
         let historyStore = TransferHistoryStore(fileURL: MainWindowViewModel.defaultHistoryURL())
         let sizeCache = ProjectSizeCache()
-        _mainWindow = State(initialValue: MainWindowViewModel(rootPaths: controller, historyStore: historyStore, sizeCache: sizeCache))
+        let debugLogStore = DebugLogStore()
+        _debugLog = State(initialValue: debugLogStore)
+        _mainWindow = State(initialValue: MainWindowViewModel(
+            rootPaths: controller,
+            historyStore: historyStore,
+            sizeCache: sizeCache,
+            debugLog: debugLogStore
+        ))
     }
 
     var body: some Scene {
@@ -50,6 +58,7 @@ struct MoveAppsApp: App {
                 .environment(rootPaths)
                 .environment(mainWindow)
                 .environment(dashboard)
+                .environment(debugLog)
                 .onAppear { appDelegate.openMainWindow = { openWindow(id: "main") } }
         }
         .commands {
@@ -59,6 +68,16 @@ struct MoveAppsApp: App {
                 }
             }
         }
+
+        // Opened on demand only (from the main window's toolbar) — never at launch — so it stays
+        // out of the way until someone actually wants to trace a slow transfer. `.suppressed`
+        // stops macOS window-state restoration from reopening it on its own after a relaunch.
+        Window("Debug", id: "debug") {
+            DebugLogView()
+                .environment(debugLog)
+        }
+        .defaultSize(width: 520, height: 420)
+        .defaultLaunchBehavior(.suppressed)
 
         // Standalone window (not a sheet in the menu-bar popover, which would dismiss when the
         // template picker's native menu takes focus).

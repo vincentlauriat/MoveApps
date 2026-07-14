@@ -269,3 +269,20 @@
 - `/Applications/MoveApps.app` updated in place from the stale `0.2.0` install to `0.3.0` (re-verified notarized after the swap).
 - Old local DMGs `release/MoveApps-0.1.0.dmg` / `MoveApps-0.2.0.dmg` deleted (still permanently available as GitHub release assets under their own tags — only the redundant local copies were removed).
 - Regenerable build artifacts cleared: the project's local `build/` (`-derivedDataPath build`, 427M) and the global Xcode DerivedData folder for MoveApps (162M) — both recreated automatically by the next `./Scripts/build.sh`/`./Scripts/release.sh` run.
+
+## 2026-07-14 — On-demand Debug window
+
+### Added
+- "Debug" window (`Sources/MoveAppsUI/Debug/DebugLogView.swift`), opened on demand from the main window's toolbar (`ladybug` icon) — a live, timestamped trace of every `TransferStep` emitted by `TransferPipeline` during single and batch transfers, plus each finished transfer's status and warnings, colour-coded (info/warning/success/error). Backed by a new `DebugLogStore` (`Sources/MoveAppsUI/Support/DebugLogStore.swift`, `@Observable`, bounded to the 500 most recent lines) that `MainWindowViewModel` logs into as it consumes the pipeline's `AsyncStream`, so the window shows full history immediately even when opened mid-transfer.
+- `ProjectListing.describe(_ warning: TransferWarning)`: the French warning-to-text mapping, extracted from `TransferHistoryView`'s private `warningText` so both the history sheet and the new debug log render warnings identically.
+
+### Decisions
+- Scope was narrowed with Vincent up front (asked via an explicit choice): this only surfaces the pipeline-step-level trace already emitted today (step transitions + final warnings/status), not live streaming of subprocess stdout/stderr (`git`/`ditto`/`npm install`) — that would need `ProcessRunner` (which currently buffers a process's output to completion rather than exposing a live callback) and its callers (`DirectoryMover`, `NodeModulesInstaller`, `VenvManager`, `GitService`) reworked to stream, judged out of scope for a first version.
+- The window is a separate SwiftUI `Window(id: "debug")` scene, never opened automatically — logging into `DebugLogStore` always happens (cheap: it only re-renders text the progress pill already computes), but the window itself is opt-in, matching Vincent's "activable à la demande" ask.
+
+### Validation
+- `xcodebuild -scheme MoveApps` → `BUILD SUCCEEDED`, no warnings. `MoveAppsCoreTests` → 49/49 green (unaffected — this feature lives entirely in `MoveAppsUI`/`MoveApps`, no `MoveAppsCore` change).
+- Not yet exercised: the actual GUI click-through (opening the window from the toolbar, watching it fill live during a real transfer, auto-scroll, the "Effacer" button) — none of that is covered by the build/unit-test check.
+
+### Docs
+- `ARCHITECTURE.md`/`ARCHITECTURE_EN.md`, `README.md`, `TODOS.md`, `MEMORY.md` updated.

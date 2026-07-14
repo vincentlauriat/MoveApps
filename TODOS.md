@@ -120,6 +120,13 @@
 - [x] `build/` local (427 Mo) + DerivedData Xcode globale MoveApps (162 Mo) supprimés — régénérables au prochain build
 - [x] Vérifié : aucun DMG/DerivedData MoveApps oublié ailleurs sur la machine (Downloads, Desktop, autres racines), aucun process MoveApps résiduel
 
+## MoveApps.app — fenêtre Debug à la demande (2026-07-14)
+- [x] `DebugLogStore` (`MoveAppsUI/Support/DebugLogStore.swift`, `@Observable`, borné aux 500 dernières lignes) alimenté par `MainWindowViewModel` à chaque `TransferStep` consommé (transferts simples et batch), avec avertissements et statut final détaillés
+- [x] `DebugLogView` (`MoveAppsUI/Debug/DebugLogView.swift`) : nouvelle fenêtre SwiftUI `Window(id: "debug")`, ouverte à la demande depuis la barre d'outils de la fenêtre principale (icône `ladybug`), jamais au lancement — auto-scroll, code couleur info/avertissement/succès/erreur, bouton « Effacer »
+- [x] `ProjectListing.describe(_ warning:)` extrait de `TransferHistoryView` pour être partagé entre l'historique et le journal debug
+- [x] Build (`xcodebuild -scheme MoveApps`) et tests (`MoveAppsCoreTests`, 49/49) revérifiés verts après les changements
+- [ ] **Non vérifié manuellement** : ouverture réelle de la fenêtre depuis le bouton, remplissage en direct pendant un vrai transfert, auto-scroll, bouton Effacer — seuls le build et les tests unitaires ont été revérifiés (aucun test ne couvre le clic-à-travers GUI) ; à confirmer par Vincent lors du prochain usage réel
+
 ## MoveApps.app — réouverture Dock + refonte visuelle fenêtre principale (2026-07-07)
 - [x] **Réouverture au clic sur l'icône Dock** : `AppDelegate.applicationShouldHandleReopen` + closure `openMainWindow` câblée depuis `MoveAppsApp`. Build OK. **Réglage « Afficher dans le Dock » activé de façon définitive** (2026-07-07, décision explicite de Vincent — `defaults write com.vincent.MoveApps showInDock -bool true`) ; note technique : la fenêtre principale ne s'ouvre pas automatiquement au lancement pour cette app agent tant qu'aucune fenêtre n'a jamais été ouverte (la closure `openMainWindow` n'est capturée qu'au premier `.onAppear`) — un clic manuel (menu bar ou Dock) reste nécessaire au moins une fois par lancement ; pas de permission Accessibilité dans ce terminal pour l'automatiser.
 - [x] **Piste A choisie parmi 4 mockups** : bandeau de stats Archive/Actif (compteur + taille disque, réutilise `DashboardViewModel`) + recherche filtrant les deux colonnes, barre de sélection/progression en pilule flottante.

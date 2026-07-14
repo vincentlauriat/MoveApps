@@ -61,4 +61,28 @@ public enum ProjectListing {
             }
         }
     }
+
+    /// A French description of a transfer warning, shared by the history view and the debug log.
+    public static func describe(_ warning: TransferWarning) -> String {
+        switch warning {
+        case .venvRecreatedEmpty(let venv):
+            return "Venv recréé sans liste de paquets : \(venv.lastPathComponent)"
+        case .venvPartialInstall(let venv, let failed):
+            return "Venv \(venv.lastPathComponent) : \(failed.count) paquet(s) non réinstallé(s)"
+        case .nodeReinstallFailed(let reason):
+            return "Échec réinstallation node_modules : \(reason)"
+        case .gitDirtyCountChanged(let before, let after):
+            return "Nombre de fichiers modifiés git différent (\(before) → \(after))"
+        case .gitDeletedFilesDetected(let paths):
+            return "Fichiers suivis supprimés détectés : \(paths.count)"
+        case .residualPathReferences(let files):
+            return "Références au chemin source résiduelles : \(files.count) fichier(s)"
+        case .brokenSymlink(let url, let target):
+            return "Lien cassé : \(url.lastPathComponent) → \(target)"
+        case .crossProjectSymlink(let url, _, let other):
+            return "Lien vers un autre projet : \(url.lastPathComponent) → \(other)"
+        case .checkoutReferenceWriteFailed(let reason):
+            return "Échec d'écriture de la trace de prise : \(reason)"
+        }
+    }
 }

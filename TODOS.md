@@ -127,6 +127,15 @@
 - [x] Build (`xcodebuild -scheme MoveApps`) et tests (`MoveAppsCoreTests`, 49/49) revérifiés verts après les changements
 - [ ] **Non vérifié manuellement** : ouverture réelle de la fenêtre depuis le bouton, remplissage en direct pendant un vrai transfert, auto-scroll, bouton Effacer — seuls le build et les tests unitaires ont été revérifiés (aucun test ne couvre le clic-à-travers GUI) ; à confirmer par Vincent lors du prochain usage réel
 
+## MoveApps.app — Release 0.4.0 (2026-07-14)
+- [x] Branche `feature/debug-window` committée (2 commits : feature + bump version) puis mergée sur `main` (merge commit, historique local, pas de PR GitHub — convention du projet)
+- [x] Version bumpée `0.3.0`→`0.4.0` / build `2`→`3` dans `project.yml`, `xcodegen generate`, `Info.plist` régénéré
+- [x] Build + `MoveAppsCoreTests` (49/49) revérifiés verts sur `main` avant release
+- [x] `./Scripts/release.sh 0.4.0` : DMG signé Developer ID + notarisé (Accepted) + staplé + signé Sparkle EdDSA, `appcast.xml` réécrit
+- [x] Vérification indépendante : `stapler validate`, `spctl -a -t exec` (accepted/Notarized Developer ID), `codesign --verify --deep --strict`, checksum SHA-256 de l'asset GitHub téléchargé (authentifié) identique au DMG local
+- [x] Release GitHub `v0.4.0` publiée (DMG en asset), `appcast.xml` committé et poussé sur `main`
+- [ ] **Bloquant pour l'auto-update** : le repo `vincentlauriat/MoveApps` est repassé **privé** (trouvé en vérifiant l'accessibilité publique de l'appcast/l'asset — tous deux en 404 non-authentifiés). Rendu public le 12/07 exprès pour Sparkle ; Vincent a choisi explicitement de le laisser privé et de s'en occuper lui-même. Tant qu'il reste privé : Sparkle ne peut offrir la mise à jour à aucun Mac déjà sur 0.3.0, seule l'installation manuelle du DMG fonctionne pour diffuser 0.4.0 sur les autres Macs.
+
 ## MoveApps.app — réouverture Dock + refonte visuelle fenêtre principale (2026-07-07)
 - [x] **Réouverture au clic sur l'icône Dock** : `AppDelegate.applicationShouldHandleReopen` + closure `openMainWindow` câblée depuis `MoveAppsApp`. Build OK. **Réglage « Afficher dans le Dock » activé de façon définitive** (2026-07-07, décision explicite de Vincent — `defaults write com.vincent.MoveApps showInDock -bool true`) ; note technique : la fenêtre principale ne s'ouvre pas automatiquement au lancement pour cette app agent tant qu'aucune fenêtre n'a jamais été ouverte (la closure `openMainWindow` n'est capturée qu'au premier `.onAppear`) — un clic manuel (menu bar ou Dock) reste nécessaire au moins une fois par lancement ; pas de permission Accessibilité dans ce terminal pour l'automatiser.
 - [x] **Piste A choisie parmi 4 mockups** : bandeau de stats Archive/Actif (compteur + taille disque, réutilise `DashboardViewModel`) + recherche filtrant les deux colonnes, barre de sélection/progression en pilule flottante.

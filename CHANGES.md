@@ -286,3 +286,14 @@
 
 ### Docs
 - `ARCHITECTURE.md`/`ARCHITECTURE_EN.md`, `README.md`, `TODOS.md`, `MEMORY.md` updated.
+
+## 2026-07-14 (cont'd) — Release 0.4.0
+
+### Added
+- `release/MoveApps-0.4.0.dmg`: signed (Developer ID + Hardened Runtime), notarized (`status: Accepted`), stapled, Sparkle-signed. `CFBundleShortVersionString`/`MARKETING_VERSION` `0.3.0`→`0.4.0`, `CFBundleVersion`/`CURRENT_PROJECT_VERSION` `2`→`3`. Published as GitHub release `v0.4.0` with the DMG as an asset.
+
+### Validation
+- Independently re-verified beyond the release script's own success message: `xcrun stapler validate` → "The validate action worked!", `spctl -a -t exec` on the mounted app → `accepted / source=Notarized Developer ID`, `codesign --verify --deep --strict` OK, `Info.plist` confirms `0.4.0`/build `3`. The published GitHub asset was re-downloaded via authenticated `gh release download` and its SHA-256 checksum matched the locally built DMG byte-for-byte.
+
+### Fixed / Flagged
+- **`vincentlauriat/MoveApps` was found to be back to PRIVATE** while re-checking public reachability of `appcast.xml`/the release asset (both 404'd over unauthenticated HTTP) — it had been made public on 2026-07-12 specifically so Sparkle's unauthenticated appcast fetch would work (see the 0.3.0 entry above). Surfaced to Vincent immediately via a choice rather than silently flipped back to public; **he chose to leave it private and handle it himself**. Net effect: Sparkle auto-update is currently non-functional for any Mac already on 0.3.0 (they won't see 0.4.0 until the repo is public again); manual DMG install/copy is the only way to get 0.4.0 onto another Mac in the meantime. The release itself is otherwise fully valid (verified via authenticated access, see above).

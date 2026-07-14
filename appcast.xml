@@ -6,16 +6,16 @@
     <description>MoveApps release feed</description>
     <language>fr</language>
     <item>
-      <title>v0.3.0</title>
-      <pubDate>Sun, 12 Jul 2026 18:21:52 +0200</pubDate>
-      <sparkle:version>2</sparkle:version>
-      <sparkle:shortVersionString>0.3.0</sparkle:shortVersionString>
+      <title>v0.4.0</title>
+      <pubDate>Tue, 14 Jul 2026 22:28:11 +0200</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>0.4.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-      <sparkle:releaseNotesLink>https://github.com/vincentlauriat/MoveApps/releases/tag/v0.3.0</sparkle:releaseNotesLink>
+      <sparkle:releaseNotesLink>https://github.com/vincentlauriat/MoveApps/releases/tag/v0.4.0</sparkle:releaseNotesLink>
       <enclosure
-        url="https://github.com/vincentlauriat/MoveApps/releases/download/v0.3.0/MoveApps-0.3.0.dmg"
+        url="https://github.com/vincentlauriat/MoveApps/releases/download/v0.4.0/MoveApps-0.4.0.dmg"
         type="application/octet-stream"
-        sparkle:edSignature="kldBUb8rgMxOAof7r3PRNsq89+Y8Jux0SGeZTVve1OcJ2+UuqkEjy0m2zlak0s/ye+MJxFkQ0Jq6oHedxYG4Bw==" length="2070696" />
+        sparkle:edSignature="VaZZMCEaJKhovo3e4I1HW1ErXQmh+11QCb1VhWxIHr7iM2/I8+XTRvDNRIpvUO86g2cS3r4WJCX4az7LJjtLAg==" length="2095508" />
     </item>
   </channel>
 </rss>

@@ -20,6 +20,7 @@ struct DraggedProject: Codable, Transferable {
 public struct MainWindowView: View {
     @Environment(MainWindowViewModel.self) private var model
     @Environment(DashboardViewModel.self) private var dashboard
+    @Environment(\.openWindow) private var openWindow
 
     @State private var showHistory = false
     @State private var searchText = ""
@@ -73,6 +74,13 @@ public struct MainWindowView: View {
                 } label: {
                     Label("Historique", systemImage: "clock.arrow.circlepath")
                 }
+
+                Button {
+                    openWindow(id: "debug")
+                } label: {
+                    Label("Debug", systemImage: "ladybug")
+                }
+                .help("Ouvrir la fenêtre de debug (suivi détaillé des transferts)")
 
                 SettingsLink {
                     Label("Réglages", systemImage: "gearshape")

@@ -53,9 +53,11 @@ Sources/
 │   │                     # floating batch/progress pills, native Transferable drag & drop), TransferPlanView
 │   │                     # (confirmation sheet), TransferHistoryView, BatchTransferView
 │   ├── MenuBar/         # MenuBarIconView, MenuBarDashboardView, DashboardViewModel, NewProjectView
-│   ├── Support/         # StackTagStyle (stack badge icon/tint), RootAccent (bespoke Archive/Actif colors)
+│   ├── Debug/           # DebugLogView — on-demand window tracing live TransferStep/TransferWarning activity
+│   ├── Support/         # StackTagStyle (stack badge icon/tint), RootAccent (bespoke Archive/Actif colors),
+│   │                     # DebugLogStore (@Observable ring buffer feeding the Debug window)
 │   └── Settings/        # SettingsView, RootPathsController (NSOpenPanel + bookmarks)
-└── MoveApps/          # thin app target — MoveAppsApp.swift (MenuBarExtra + Window(id:) + Settings Scenes),
+└── MoveApps/          # thin app target — MoveAppsApp.swift (MenuBarExtra + Window(id:) incl. "debug" + Settings Scenes),
                        # AppDelegate (Dock visibility policy + Dock-icon-click reopen)
 ```
 
@@ -105,4 +107,13 @@ v1 shipped with no network auto-update because Sparkle's standard appcast patter
 A dedicated Sparkle EdDSA keychain account, `MoveApps` (separate from `MarkdownViewer`'s own account — one key pair could in principle serve multiple apps, but per-app accounts keep a lost/rotated key's blast radius contained to one app), was generated once via `.sparkle-tools/bin/generate_keys --account MoveApps` and must **never be regenerated** — doing so would make every already-installed copy permanently reject future updates (this exact incident already happened once to `MarkdownViewer`, forcing a manual re-download for everyone on ≤ v0.8.0; see its `release-full.sh` header for the full story). `Scripts/release.sh` now Sparkle-signs the DMG and writes `appcast.xml` at the repo root as its final step, mirroring `release-full.sh`'s equivalent section.
 
 One real bug caught before it could bite: `CFBundleVersion` — the build number Sparkle's comparator actually reads, not `MARKETING_VERSION` — had stayed hardcoded at `"1"` through both `0.1.0` and `0.2.0`. Harmless while no Sparkle feed existed, but two releases sharing the same build number are indistinguishable to Sparkle's version comparator, which would have silently broken update detection the moment auto-update went live. Bumped to `"2"` for `0.3.0`; every future release must bump `CURRENT_PROJECT_VERSION` in `project.yml` too, not just the marketing version — called out explicitly in `Scripts/release.sh`'s header comment now.
+
+## On-demand Debug window (2026-07-14)
+Vincent flagged that transfers can run long with only the compact progress pill for feedback, and asked for a debug window to trace everything happening — opened only on demand. Scope was narrowed with him via an explicit up-front choice: pipeline-step-level tracing (reusing the `TransferStep`s `TransferPipeline` already emits) versus also streaming live subprocess stdout/stderr from `git`/`ditto`/`npm install`. The latter would require reworking `ProcessRunner` — which currently buffers a process's output to completion via `Pipe.readDataToEndOfFile` rather than exposing a live callback — and every caller (`DirectoryMover`, `NodeModulesInstaller`, `VenvManager`, `GitService`). Vincent chose the pipeline-step level for a first version.
+
+`DebugLogStore` (`MoveAppsUI/Support`) is a small `@Observable` ring buffer (bounded to the 500 most recent entries) created once in `MoveAppsApp.init` and injected via `.environment` into both the main window and a new `Window(id: "debug")` scene. `MainWindowViewModel` takes it as a constructor dependency and logs every `TransferStep` it already consumes off `TransferPipeline.run`'s `AsyncStream` (in both the single-transfer `run(_:)` and `runBatch(_:)` paths), plus each finished transfer's warnings broken onto their own line and colour-coded (info/warning/success/error, derived from `TransferResult.status`). Logging always happens — it costs nothing beyond re-rendering text the progress pill already computes — so the window shows full history immediately even when opened mid-transfer; only the *window* itself is opt-in, via a new toolbar button, never opened at launch.
+
+`TransferHistoryView`'s private French warning-to-text mapping was extracted into `ProjectListing.describe(_ warning: TransferWarning)` so the history sheet and the new debug log render warnings identically instead of maintaining two copies.
+
+**Not yet manually verified**: the actual GUI click-through (opening the window from the toolbar, watching it fill live during a real transfer, auto-scroll, the "Effacer" button) — only `xcodebuild` and `MoveAppsCoreTests` (49/49) were reverified green, neither of which exercises SwiftUI interaction.
 

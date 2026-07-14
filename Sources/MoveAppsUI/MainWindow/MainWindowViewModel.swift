@@ -39,11 +39,18 @@ public final class MainWindowViewModel {
     private let rootPaths: RootPathsController
     private let historyStore: TransferHistoryStore
     private let sizeCache: ProjectSizeCache
+    private let debugLog: DebugLogStore
 
-    public init(rootPaths: RootPathsController, historyStore: TransferHistoryStore, sizeCache: ProjectSizeCache) {
+    public init(
+        rootPaths: RootPathsController,
+        historyStore: TransferHistoryStore,
+        sizeCache: ProjectSizeCache,
+        debugLog: DebugLogStore
+    ) {
         self.rootPaths = rootPaths
         self.historyStore = historyStore
         self.sizeCache = sizeCache
+        self.debugLog = debugLog
     }
 
     /// `~/Library/Application Support/MoveApps/history.json`.
@@ -297,6 +304,7 @@ public final class MainWindowViewModel {
         activeName = plan.project.name
         currentStepText = "Démarrage…"
         lastResult = nil
+        debugLog.log("— \(plan.project.name) : \(rootLabel(plan.from)) → \(rootLabel(plan.to)) —")
 
         let locations = rootPaths.settings.locations
 
@@ -305,6 +313,7 @@ public final class MainWindowViewModel {
             var finalResult: TransferResult?
             for await step in await pipeline.run(plan) {
                 self.currentStepText = ProjectListing.describe(step)
+                self.logStep(step)
                 if case .finished(let result) = step {
                     finalResult = result
                     self.lastResult = result
@@ -340,9 +349,11 @@ public final class MainWindowViewModel {
                 self.batchIndex = offset + 1
                 self.activeName = plan.project.name
                 self.currentStepText = "Démarrage…"
+                self.debugLog.log("— \(plan.project.name) (\(offset + 1)/\(plans.count)) : \(rootLabel(plan.from)) → \(rootLabel(plan.to)) —")
                 var finalResult: TransferResult?
                 for await step in await pipeline.run(plan) {
                     self.currentStepText = ProjectListing.describe(step)
+                    self.logStep(step)
                     if case .finished(let result) = step {
                         finalResult = result
                         self.lastResult = result
@@ -359,6 +370,26 @@ public final class MainWindowViewModel {
             self.refresh()
             self.loadHistory()
             self.regenerateIndex()
+        }
+    }
+
+    /// Mirrors a pipeline step into the debug log: warnings and terminal failures are coloured
+    /// distinctly, and a finished transfer's warnings are each broken out onto their own line so
+    /// they're visible without expanding the history sheet.
+    private func logStep(_ step: TransferStep) {
+        guard case .finished(let result) = step else {
+            debugLog.log(ProjectListing.describe(step))
+            return
+        }
+        let kind: DebugLogEntry.Kind
+        switch result.status {
+        case .ok: kind = .success
+        case .warning: kind = .warning
+        case .critical, .failed: kind = .error
+        }
+        debugLog.log(ProjectListing.describe(step), kind: kind)
+        for warning in result.warnings {
+            debugLog.log("  ↳ " + ProjectListing.describe(warning), kind: .warning)
         }
     }
 

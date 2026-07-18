@@ -5,11 +5,14 @@ import Foundation
 /// A top-level entry is surfaced as-is when it is itself a project (`StackDetector.isProjectRoot`
 /// — has its own `.git` or a stack marker at its root). When it isn't, it's treated as a
 /// container folder that merely groups several projects (e.g. a monorepo-style folder holding
-/// multiple independent git repos as subdirectories) — its qualifying children are surfaced
-/// instead, so each can be selected and transferred on its own. A folder with no qualifying
-/// children (neither itself nor any child looks like a project) is still surfaced as a fallback,
-/// so nothing silently disappears from the list — unless the folder is entirely empty, in which
-/// case there is nothing to transfer and it's skipped outright.
+/// multiple independent git repos as subdirectories) — its children are surfaced instead, so each
+/// can be selected and transferred on its own. This applies even to a child that doesn't itself
+/// look like a project by marker (no `.git`, no stack file) but still has content — it's still
+/// listed (just with no stack tags), so it isn't silently dropped just because a sibling happens
+/// to qualify as a project. A folder with no children at all (neither itself nor any child looks
+/// like a project, and nothing else is in it) is still surfaced as a fallback, so nothing silently
+/// disappears from the list — unless the folder is entirely empty, in which case there is nothing
+/// to transfer and it's skipped outright.
 public struct ProjectScanner: Sendable {
     private let detector: StackDetector
     private let checkoutStore: CheckoutReferenceStore
@@ -62,6 +65,11 @@ public struct ProjectScanner: Sendable {
                     containerCandidates.append(makeCheckoutCandidate(child, container: container, checkout: checkout))
                 } else if detector.isProjectRoot(at: child) {
                     containerCandidates.append(makeCandidate(child, container: container))
+                } else if hasChildren(child) {
+                    // Doesn't look like a project by marker (no `.git`, no stack file), but still
+                    // has real content — surface it too rather than silently dropping it, the same
+                    // way a fully marker-less container folder falls back to being listed as-is.
+                    containerCandidates.append(makeCandidate(child, container: container))
                 }
             }
 
@@ -92,6 +100,15 @@ public struct ProjectScanner: Sendable {
 
     private func isDirectory(_ url: URL) -> Bool {
         (try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+    }
+
+    private func hasChildren(_ url: URL) -> Bool {
+        guard let children = try? fileManager.contentsOfDirectory(
+            at: url,
+            includingPropertiesForKeys: [.isDirectoryKey],
+            options: [.skipsHiddenFiles]
+        ) else { return false }
+        return !children.isEmpty
     }
 
     private func makeCandidate(_ url: URL, container: String? = nil) -> ProjectCandidate {

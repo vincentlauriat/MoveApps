@@ -69,8 +69,8 @@ targets:
       path: Sources/MoveApps/Info.plist
       properties:
         CFBundleDisplayName: MoveApps
-        CFBundleShortVersionString: "0.4.0"
-        CFBundleVersion: "3"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSMinimumSystemVersion: "26.0"
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.developer-tools

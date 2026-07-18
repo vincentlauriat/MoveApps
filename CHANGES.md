@@ -297,3 +297,20 @@
 
 ### Fixed / Flagged
 - **`vincentlauriat/MoveApps` was found to be back to PRIVATE** while re-checking public reachability of `appcast.xml`/the release asset (both 404'd over unauthenticated HTTP) — it had been made public on 2026-07-12 specifically so Sparkle's unauthenticated appcast fetch would work (see the 0.3.0 entry above). Surfaced to Vincent immediately via a choice rather than silently flipped back to public; **he chose to leave it private and handle it himself**. Net effect: Sparkle auto-update is currently non-functional for any Mac already on 0.3.0 (they won't see 0.4.0 until the repo is public again); manual DMG install/copy is the only way to get 0.4.0 onto another Mac in the meantime. The release itself is otherwise fully valid (verified via authenticated access, see above).
+
+## 2026-07-18 — Repo back to public + local machine cleanup
+
+### Fixed
+- `vincentlauriat/MoveApps` switched back to public (`gh repo edit --visibility public`) at Vincent's explicit request. Verified end-to-end, not just the API flag: `appcast.xml` and the `v0.4.0` DMG release asset both return `200` over unauthenticated HTTP, appcast content confirmed correct (`sparkle:shortVersionString` `0.4.0`, valid `edSignature`). Sparkle auto-update is working again for any Mac on 0.3.0 or 0.4.0.
+- **Second unexplained flip to private** since 0.4.0 shipped (first noted 2026-07-14) — no session changed the setting either time. Flagged for future monitoring.
+
+### Removed
+- Local machine cleanup, same pattern as the 0.3.0 cleanup: `/Applications/MoveApps.app` (stale 0.3.0) swapped for the real 0.4.0 build, re-verified (`spctl` notarized, `codesign --verify --deep --strict` OK). Deleted `release/MoveApps-0.3.0.dmg` + its release notes (kept on the GitHub release tag), a stray `~/Downloads/MoveApps-0.3.0.dmg`, local `build/` (254M) and the global Xcode DerivedData for MoveApps (178M) — all pure regenerable cache.
+
+## 2026-07-18 (cont'd) — Bug: container folders silently dropped non-project siblings
+
+### Fixed
+- `ProjectScanner.scan()`: when a container folder (e.g. `Experimentations`) held a mix of a real project (has `.git`/a stack marker) and marker-less-but-non-empty siblings, the marker-less siblings were silently excluded from the result entirely — only the sibling(s) that happened to look like a project by marker were surfaced. Found live: Vincent had `ChromeUsage` (git), `ClaudeDeck` (just two `.md` files), and `drawio-skill-1.34.0` (no `.git`, no recognized stack file) under `Experimentations`; only `ChromeUsage` showed up in the "Actif" list.
+- Root cause: the per-child loop inside the container-decomposition branch only added a child to `containerCandidates` if it was a checkout marker or `StackDetector.isProjectRoot` — any other child, even non-empty, was dropped with no fallback (unlike the top-level "the whole folder has no qualifying children" case, which does fall back to listing the folder itself).
+- Fix: a child that isn't a project by marker but still has content is now surfaced too (with empty `stackTags`), the same way a fully marker-less container falls back to being listed as itself. New regression test `surfacesMarkerLessSiblingInMixedContainer` (`ProjectScannerTests`) reproduces the exact `Experimentations` scenario. Full suite re-verified: 50/50 green, Release build still compiles clean.
+- **Not yet installed**: `/Applications/MoveApps.app` still runs the old (buggy) 0.4.0 build — this fix lives on `main` uncommitted for now, pending Vincent's go-ahead on committing/cutting a new release.

@@ -51,6 +51,35 @@ struct ProjectScannerTests {
         #expect(miscellaneous?.containerName == nil)
     }
 
+    @Test("surfaces a marker-less child alongside a real project instead of dropping it (Experimentations bug)")
+    func surfacesMarkerLessSiblingInMixedContainer() {
+        let root = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fm = FileManager.default
+
+        // A container ("Experimentations") holding one real project (has its own git repo)...
+        try? fm.createDirectory(
+            at: root.appendingPathComponent("Experimentations/ChromeUsage/.git"), withIntermediateDirectories: true
+        )
+        // ...and two siblings with real content but no `.git`/stack marker of their own — before
+        // the fix, these were silently dropped entirely because a qualifying sibling existed.
+        Fixture.write("notes", to: root.appendingPathComponent("Experimentations/ClaudeDeck/PRD.md"))
+        Fixture.write("readme", to: root.appendingPathComponent("Experimentations/drawio-skill-1.34.0/README.md"))
+
+        let candidates = ProjectScanner().scan(root)
+        let names = Set(candidates.map(\.name))
+
+        #expect(!names.contains("Experimentations"))
+        #expect(names.contains("ChromeUsage"))
+        #expect(names.contains("ClaudeDeck"))
+        #expect(names.contains("drawio-skill-1.34.0"))
+        #expect(candidates.count == 3)
+
+        let claudeDeck = candidates.first { $0.name == "ClaudeDeck" }
+        #expect(claudeDeck?.containerName == "Experimentations")
+        #expect(claudeDeck?.stackTags.isEmpty == true)
+    }
+
     @Test("surfaces checkout markers (top-level and nested) as locked candidates, not scanned projects")
     func surfacesCheckoutMarkers() throws {
         let root = Fixture.makeTempDir()

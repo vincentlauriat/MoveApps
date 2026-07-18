@@ -57,7 +57,7 @@
 - [x] AppIcon réel — fait le 2026-07-03 (squircle dégradé bleu + flèches bidirectionnelles, `Scripts/make-app-icon.swift`), DMG 0.1.0 régénéré avec l'icône le 2026-07-04. Cette ligne était restée cochée « optionnel » par erreur de synchro doc.
 - [x] Phase 5 — comparaison stack detection bash vs Swift (`git node python` sur les deux), round-trip synthétique sur les vraies racines (deux legs `.ok`), round-trip réel sur `LinkManager` (choisi par Vincent) — checksums + git status identiques avant/après, venv fonctionnel
 - [x] Bug trouvé + corrigé via le round-trip réel : `VenvManager.recreate()` perdait TOUS les paquets d'un venv si un seul pin exact devenait indisponible (ex. version retirée de PyPI) ; corrigé avec un repli paquet-par-paquet + test de régression déterministe. `LinkManager` réparé manuellement puis re-vérifié avec le correctif (2 legs `.ok`, 0 avertissement)
-- [ ] Later (not blocking v1): private Sparkle feed for auto-update (GitHub Releases + PAT, or similar) once the app is stable
+- [x] Auto-update feed — résolu autrement que prévu : repo `vincentlauriat/MoveApps` rendu public le 2026-07-12 (puis re-confirmé public le 2026-07-18 après deux retours mystérieux en privé), donc l'appcast public non-authentifié fonctionne ; pas besoin du feed privé + PAT envisagé ici
 - [ ] Distribuer `release/MoveApps-0.1.0.dmg` sur les autres Macs de Vincent (AirDrop / iCloud Drive perso) — geste manuel
 
 ## MoveApps.app — retours d'usage de Vincent (2026-07-03)
@@ -134,7 +134,20 @@
 - [x] `./Scripts/release.sh 0.4.0` : DMG signé Developer ID + notarisé (Accepted) + staplé + signé Sparkle EdDSA, `appcast.xml` réécrit
 - [x] Vérification indépendante : `stapler validate`, `spctl -a -t exec` (accepted/Notarized Developer ID), `codesign --verify --deep --strict`, checksum SHA-256 de l'asset GitHub téléchargé (authentifié) identique au DMG local
 - [x] Release GitHub `v0.4.0` publiée (DMG en asset), `appcast.xml` committé et poussé sur `main`
-- [ ] **Bloquant pour l'auto-update** : le repo `vincentlauriat/MoveApps` est repassé **privé** (trouvé en vérifiant l'accessibilité publique de l'appcast/l'asset — tous deux en 404 non-authentifiés). Rendu public le 12/07 exprès pour Sparkle ; Vincent a choisi explicitement de le laisser privé et de s'en occuper lui-même. Tant qu'il reste privé : Sparkle ne peut offrir la mise à jour à aucun Mac déjà sur 0.3.0, seule l'installation manuelle du DMG fonctionne pour diffuser 0.4.0 sur les autres Macs.
+- [x] **Bloquant pour l'auto-update, résolu le 2026-07-18** : le repo `vincentlauriat/MoveApps` était repassé **privé** (trouvé en vérifiant l'accessibilité publique de l'appcast/l'asset — tous deux en 404 non-authentifiés). Rendu public le 12/07 exprès pour Sparkle ; Vincent avait choisi explicitement de le laisser privé et de s'en occuper lui-même — voir section ci-dessous pour la résolution.
+
+## MoveApps.app — repo repassé public + ménage machine (2026-07-18)
+- [x] Repo `vincentlauriat/MoveApps` repassé public (`gh repo edit --visibility public`), confirmé via `gh api` (`private: false`)
+- [x] Accessibilité non-authentifiée revérifiée bout en bout : `appcast.xml` → 200 avec contenu correct (`sparkle:shortVersionString` 0.4.0), DMG de la release `v0.4.0` → 200
+- [x] Ménage machine : `/Applications/MoveApps.app` (stale 0.3.0) remplacé par la vraie 0.4.0 (re-vérifié `spctl`/`codesign` après coup), `release/MoveApps-0.3.0.dmg` + notes supprimés, `~/Downloads/MoveApps-0.3.0.dmg` orphelin supprimé, `build/` + DerivedData Xcode nettoyés (~432 Mo)
+- [ ] **À surveiller** : c'est la 2e fois (14/07 puis 18/07) que le repo est retrouvé repassé en privé sans qu'aucune session ne l'ait fait — cause inconnue, vérifier `gh api repos/vincentlauriat/MoveApps --jq .private` après chaque future release
+
+## MoveApps.app — bug ProjectScanner : conteneur mixte perd ses enfants sans marqueur (2026-07-18)
+- [x] Bug reproduit et root-causé : dans `Experimentations` (`ChromeUsage` avec `.git`, `ClaudeDeck` et `drawio-skill-1.34.0` sans marqueur reconnu), seul `ChromeUsage` apparaissait côté Actif — dès qu'un enfant qualifie comme projet, `ProjectScanner.scan()` laissait tomber silencieusement tous les autres enfants du même dossier-conteneur
+- [x] Corrigé (`Sources/MoveAppsCore/Services/ProjectScanner.swift`) : un enfant sans marqueur mais avec du contenu réel est désormais surfacé lui aussi (sans tag de stack), au lieu d'être ignoré
+- [x] Test de régression `surfacesMarkerLessSiblingInMixedContainer` ajouté (`ProjectScannerTests.swift`), reproduisant le scénario exact `Experimentations`. Suite complète revérifiée : **50/50 verts**. Build Release revérifié (`CODE_SIGNING_ALLOWED=NO`, `BUILD SUCCEEDED`)
+- [x] Tentative de démo live sur un build de test (DerivedData) interrompue par une vraie boîte de dialogue TCC macOS (accès Documents) — volontairement pas cliquée à la place de Vincent, process de test tué à la place.
+- [x] Vincent a tranché : commit + push + merge + release. Version bumpée `0.4.0`→`0.4.1` / build `3`→`4`.
 
 ## MoveApps.app — réouverture Dock + refonte visuelle fenêtre principale (2026-07-07)
 - [x] **Réouverture au clic sur l'icône Dock** : `AppDelegate.applicationShouldHandleReopen` + closure `openMainWindow` câblée depuis `MoveAppsApp`. Build OK. **Réglage « Afficher dans le Dock » activé de façon définitive** (2026-07-07, décision explicite de Vincent — `defaults write com.vincent.MoveApps showInDock -bool true`) ; note technique : la fenêtre principale ne s'ouvre pas automatiquement au lancement pour cette app agent tant qu'aucune fenêtre n'a jamais été ouverte (la closure `openMainWindow` n'est capturée qu'au premier `.onAppear`) — un clic manuel (menu bar ou Dock) reste nécessaire au moins une fois par lancement ; pas de permission Accessibilité dans ce terminal pour l'automatiser.

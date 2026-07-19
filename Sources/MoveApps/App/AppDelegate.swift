@@ -12,6 +12,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// this closure bridges the two.
     var openMainWindow: (() -> Void)?
 
+    /// Reports whether a transfer is mid-flight. Set from `MoveAppsApp` for the same reason
+    /// `openMainWindow` is — AppKit's termination handling has no view of SwiftUI's observable view
+    /// models — so `applicationShouldTerminate` can guard ⌘Q against interrupting a move between its
+    /// copy and source-deletion steps.
+    var isTransferRunning: (() -> Bool)?
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         UserDefaults.standard.register(defaults: [Self.showInDockDefaultsKey: true])
         Self.applyDockVisibility()
@@ -21,6 +27,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Dock mode) must never quit it.
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         false
+    }
+
+    /// A ⌘Q (or Dock/menu "Quit") while a transfer is running would kill the pipeline between the
+    /// copy and the source deletion, leaving a project half-moved. Guard that one case behind an
+    /// explicit confirmation; every other quit path stays instantaneous.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard isTransferRunning?() == true else { return .terminateNow }
+
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Un transfert est en cours"
+        alert.informativeText = "Quitter maintenant risque d'interrompre le transfert en plein vol et de laisser un projet à moitié déplacé. Voulez-vous vraiment quitter ?"
+        alert.addButton(withTitle: "Quitter quand même")
+        alert.addButton(withTitle: "Annuler")
+
+        NSApp.activate(ignoringOtherApps: true)
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
     }
 
     /// Dock icon clicked with no window on screen: bring back the main window (the Active/Archive

@@ -59,7 +59,10 @@ struct MoveAppsApp: App {
                 .environment(mainWindow)
                 .environment(dashboard)
                 .environment(debugLog)
-                .onAppear { appDelegate.openMainWindow = { openWindow(id: "main") } }
+                .onAppear {
+                    appDelegate.openMainWindow = { openWindow(id: "main") }
+                    appDelegate.isTransferRunning = { mainWindow.isRunning }
+                }
         }
         .commands {
             CommandGroup(after: .appInfo) {

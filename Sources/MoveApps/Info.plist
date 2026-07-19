@@ -26,6 +26,8 @@
 	<string>26.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>MoveApps a besoin d'accéder à votre dossier Documents pour lire et déplacer les dossiers de projets qui s'y trouvent (notamment ~/Documents/GitHub).</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSHumanReadableCopyright</key>

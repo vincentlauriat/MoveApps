@@ -75,6 +75,7 @@ targets:
         LSUIElement: true
         LSApplicationCategoryType: public.app-category.developer-tools
         NSHumanReadableCopyright: "© 2026 Vincent Lauriat"
+        NSDocumentsFolderUsageDescription: "MoveApps a besoin d'accéder à votre dossier Documents pour lire et déplacer les dossiers de projets qui s'y trouvent (notamment ~/Documents/GitHub)."
         NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
         NSSupportsAutomaticGraphicsSwitching: true

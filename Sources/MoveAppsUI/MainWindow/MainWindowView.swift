@@ -433,20 +433,48 @@ struct RootColumnView: View {
         }
     }
 
+    @ViewBuilder
     private var emptyState: some View {
-        let message: String
-        if model.isScanning {
-            message = "Analyse…"
-        } else if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-            message = "Aucun résultat"
+        if !model.isScanning && model.isAccessDenied(root) {
+            accessDeniedState
         } else {
-            message = "Aucun projet"
+            Text(emptyMessage)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .padding(.vertical, 24)
         }
-        return Text(message)
-            .font(.callout)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .padding(.vertical, 24)
+    }
+
+    private var emptyMessage: String {
+        if model.isScanning {
+            return "Analyse…"
+        } else if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+            return "Aucun résultat"
+        } else {
+            return "Aucun projet"
+        }
+    }
+
+    /// Shown when the root exists but its contents can't be listed — a denied Documents/Files &
+    /// Folders permission, not a truly empty root — so the user can act instead of mistaking it for
+    /// "no projects".
+    private var accessDeniedState: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "lock.slash")
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(.orange)
+            Text("Accès refusé à \(model.displayPath(for: root))")
+                .font(.system(.callout, weight: .semibold))
+                .multilineTextAlignment(.center)
+            Text("Autorisez l'accès dans Réglages Système › Confidentialité et sécurité › Fichiers et dossiers, puis rafraîchissez.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 24)
     }
 
     /// Narrows the column to projects whose name matches the search field (all of them when empty).

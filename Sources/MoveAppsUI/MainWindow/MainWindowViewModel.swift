@@ -19,6 +19,11 @@ public final class MainWindowViewModel {
     public private(set) var currentStepText = ""
     public private(set) var lastResult: TransferResult?
 
+    /// Roots whose contents couldn't be listed because access was denied (a TCC refusal on
+    /// `~/Documents`, typically) — kept distinct from a genuinely empty root so the column can say
+    /// so instead of showing a misleading "Aucun projet".
+    public private(set) var accessDeniedRoots: Set<RootKind> = []
+
     /// A plan built from a drag/drop or row action, awaiting confirmation in the sheet.
     public var pendingPlan: TransferPlan?
 
@@ -80,10 +85,16 @@ public final class MainWindowViewModel {
         isScanning = true
         Task {
             let scanned = await Task.detached { ProjectListing.scanSync(locations) }.value
+            let denied = await Task.detached { ProjectListing.deniedRoots(locations) }.value
             self.projects = scanned
+            self.accessDeniedRoots = denied
             self.isScanning = false
             self.measureSizes(for: scanned)
         }
+    }
+
+    public func isAccessDenied(_ root: RootKind) -> Bool {
+        accessDeniedRoots.contains(root)
     }
 
     /// Fills each unlocked project's disk size in the background: the list already rendered, so

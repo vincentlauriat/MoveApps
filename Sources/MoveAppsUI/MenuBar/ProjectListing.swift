@@ -33,6 +33,27 @@ public enum ProjectListing {
         }
     }
 
+    /// Roots whose contents can't be listed because access was denied, distinct from an empty or
+    /// absent root. An empty directory lists as `[]` without throwing; a permission refusal throws
+    /// on a path that still exists — so a throw against a directory that *does* exist is the tell,
+    /// which avoids guessing the exact error code TCC surfaces (it varies: Cocoa vs. POSIX `EPERM`).
+    public static func deniedRoots(_ locations: RootLocations) -> Set<RootKind> {
+        let fileManager = FileManager.default
+        var denied: Set<RootKind> = []
+        for kind in RootKind.allCases {
+            let root = locations.url(for: kind)
+            do {
+                _ = try fileManager.contentsOfDirectory(atPath: root.path)
+            } catch {
+                var isDirectory: ObjCBool = false
+                if fileManager.fileExists(atPath: root.path, isDirectory: &isDirectory), isDirectory.boolValue {
+                    denied.insert(kind)
+                }
+            }
+        }
+        return denied
+    }
+
     /// A French description of a pipeline step, for the progress line.
     public static func describe(_ step: TransferStep) -> String {
         switch step {

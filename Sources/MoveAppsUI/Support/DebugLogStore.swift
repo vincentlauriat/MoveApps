@@ -34,15 +34,28 @@ public final class DebugLogStore {
 
     private let maxEntries: Int
 
-    public init(maxEntries: Int = 500) {
+    /// Optional on-disk mirror. Injected (rather than always-on) so tests keep an in-memory store;
+    /// production wires a real writer so a journal survives relaunches.
+    private let fileWriter: DebugLogFileWriter?
+
+    public init(maxEntries: Int = 500, fileWriter: DebugLogFileWriter? = nil) {
         self.maxEntries = maxEntries
+        self.fileWriter = fileWriter
     }
 
     public func log(_ text: String, kind: DebugLogEntry.Kind = .info) {
-        entries.append(DebugLogEntry(timestamp: Date(), text: text, kind: kind))
+        let entry = DebugLogEntry(timestamp: Date(), text: text, kind: kind)
+        entries.append(entry)
         if entries.count > maxEntries {
             entries.removeFirst(entries.count - maxEntries)
         }
+        fileWriter?.enqueue(timestamp: entry.timestamp, kind: kind, text: text)
+    }
+
+    /// The on-disk log file currently being written, when persistent logging is enabled — for the
+    /// "Exporter" action to reveal in the Finder. `nil` when running in-memory only (e.g. tests).
+    public func currentLogFileURL() -> URL? {
+        fileWriter?.currentLogFileURL()
     }
 
     public func clear() {

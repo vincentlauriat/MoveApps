@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import MoveAppsCore
 
 /// A standalone, on-demand window tracing every pipeline step of every transfer as it runs — for
@@ -27,11 +28,23 @@ public struct DebugLogView: View {
             Text("Debug")
                 .font(.system(.title3, design: .rounded, weight: .bold))
             Spacer()
+            Button("Exporter le journal") { revealLogFile() }
+                .buttonStyle(.glass)
             Button("Effacer") { log.clear() }
                 .buttonStyle(.glass)
                 .disabled(log.entries.isEmpty)
         }
         .padding(16)
+    }
+
+    /// Reveals today's persistent log file in the Finder — or its folder, when today's file doesn't
+    /// exist yet — so an incident journal can be grabbed even after the app was relaunched.
+    private func revealLogFile() {
+        guard let url = log.currentLogFileURL() else { return }
+        let directory = url.deletingLastPathComponent()
+        if !NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: directory.path) {
+            NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: directory.path)
+        }
     }
 
     private var emptyState: some View {

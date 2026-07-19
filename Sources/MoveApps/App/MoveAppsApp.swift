@@ -32,7 +32,7 @@ struct MoveAppsApp: App {
         _dashboard = State(initialValue: DashboardViewModel(rootPaths: controller))
         let historyStore = TransferHistoryStore(fileURL: MainWindowViewModel.defaultHistoryURL())
         let sizeCache = ProjectSizeCache()
-        let debugLogStore = DebugLogStore()
+        let debugLogStore = DebugLogStore(fileWriter: DebugLogFileWriter())
         _debugLog = State(initialValue: debugLogStore)
         _mainWindow = State(initialValue: MainWindowViewModel(
             rootPaths: controller,

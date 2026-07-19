@@ -12,7 +12,19 @@ Réécriture SwiftUI native de `move-app.sh` : menu bar + fenêtre principale, t
 
 **Mises à jour automatiques** : depuis la 0.3.0, MoveApps vérifie les nouvelles versions au lancement via Sparkle (jamais d'installation sans confirmation explicite) — menu « Rechercher les mises à jour… ». Cela suppose que le repo GitHub soit public (c'est le cas depuis le 12/07/2026) : Sparkle lit `appcast.xml` et le DMG via `raw.githubusercontent.com`/GitHub Releases, sans identifiants. Le tout premier install sur un nouveau Mac reste manuel (Sparkle met à jour une installation existante, il n'en crée pas une) ; les releases suivantes se proposent ensuite automatiquement.
 
-État actuel : Phases 0 à 5 terminées (logique métier, menu bar en tableau de bord, fenêtre principale, packaging/notarisation, cross-validation) — voir `PLAN.md`. Distribuable via `release/MoveApps-0.3.0.dmg` (signé + notarisé + signé Sparkle). La fenêtre principale affiche désormais des listes hiérarchiques Archive/Actif avec en-têtes de dossier sélectionnables, un bandeau de compteurs/taille disque par racine + une recherche, et se rouvre au clic sur l'icône Dock ; le tableau de bord barre de menu propose la création de projet depuis un modèle. Phase 6 (verrou de prise + taille par projet) mergée sur `main` — voir `TODOS.md`. Une fenêtre **« Debug »** (bouton dédié dans la barre d'outils) trace en direct, à la demande, les étapes de chaque transfert en cours (utile quand un déplacement traîne en longueur) — voir `TODOS.md`. Chantier en cours par ailleurs : passe d'élégance visuelle sur la fenêtre principale (typographie, couleurs Archive/Actif sur mesure), pas encore confirmée par Vincent — voir `TODOS.md`.
+État actuel : Phases 0 à 5 terminées (logique métier, menu bar en tableau de bord, fenêtre principale, packaging/notarisation, cross-validation) — voir `PLAN.md`. Distribuable via DMG signé + notarisé + signé Sparkle (voir « Installation » ci-dessous). La fenêtre principale affiche désormais des listes hiérarchiques Archive/Actif avec en-têtes de dossier sélectionnables, un bandeau de compteurs/taille disque par racine + une recherche, et se rouvre au clic sur l'icône Dock ; le tableau de bord barre de menu propose la création de projet depuis un modèle. Phase 6 (verrou de prise + taille par projet) mergée sur `main` — voir `TODOS.md`. Une fenêtre **« Debug »** (bouton dédié dans la barre d'outils) trace en direct, à la demande, les étapes de chaque transfert en cours (utile quand un déplacement traîne en longueur) — voir `TODOS.md`. Chantier en cours par ailleurs : passe d'élégance visuelle sur la fenêtre principale (typographie, couleurs Archive/Actif sur mesure), pas encore confirmée par Vincent — voir `TODOS.md`.
+
+## Installation
+
+1. Téléchargez le DMG de la dernière version depuis la page **[Releases](https://github.com/vincentlauriat/MoveApps/releases)** du dépôt.
+2. Ouvrez le DMG et glissez `MoveApps.app` dans le dossier **Applications**.
+3. Lancez l'app depuis Applications (ou Spotlight). L'app est signée Developer ID et notariée par Apple : le premier lancement se fait normalement, sans avoir besoin de passer par un clic droit > Ouvrir pour contourner Gatekeeper.
+
+**Prérequis** : macOS 26.0 ou ultérieur.
+
+Une fois installée, MoveApps vérifie automatiquement les nouvelles versions (voir la note sur les mises à jour ci-dessus) : les releases suivantes n'ont plus besoin de repasser par cette page.
+
+Voir aussi `USER_GUIDE.md` pour prendre en main l'app et `PRIVACY.md` pour la note de confidentialité.
 
 Le script `move-app.sh` documenté ci-dessous reste dans le repo comme référence/fallback CLI, non maintenu activement.
 

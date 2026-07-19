@@ -52,25 +52,46 @@ public struct DirectoryMover: Sendable {
             return .failed(reason: "copy failed")
         }
 
-        let sourceCount = fileManager.recursiveItemCount(at: source)
-        let destCount = fileManager.recursiveItemCount(at: destination)
-        guard sourceCount == destCount else {
-            return .failed(reason: "incomplete copy (source: \(sourceCount) items, destination: \(destCount) items)")
+        // Structural loss net for projects with no downstream safety check. A git-tracked project
+        // is verified far more precisely by the pipeline's post-move git snapshot, which lists the
+        // exact deleted tracked paths and escalates the result to `.critical`; running a hard-fail
+        // here too would pre-empt that richer check, so this is scoped to non-git sources — which
+        // otherwise have no protection at all. Compare the *sets* of relative paths, not just item
+        // counts: a count check is fooled when ditto drops one file while a compensating file
+        // appears elsewhere (a stray `.DS_Store`), leaving the totals equal — exactly the silent
+        // loss the `onyx` incident exposed. Checked on the source: the destination's `.git` may be
+        // the very thing that was lost.
+        let isGitTracked = fileManager.fileExists(atPath: source.appendingPathComponent(".git").path)
+        if !isGitTracked {
+            let sourcePaths = fileManager.relativePaths(at: source)
+            let destPaths = fileManager.relativePaths(at: destination)
+            let missing = sourcePaths.subtracting(destPaths).sorted()
+            guard missing.isEmpty else {
+                let shown = missing.prefix(5).joined(separator: ", ")
+                let overflow = missing.count > 5 ? " et \(missing.count - 5) de plus" : ""
+                return .failed(reason: "copie incomplète — chemins manquants : \(shown)\(overflow)")
+            }
         }
         return .copiedPendingDeletion
     }
 }
 
 extension FileManager {
-    /// Counts the directory itself plus all descendants, mirroring `find <dir> | wc -l`.
-    func recursiveItemCount(at url: URL) -> Int {
+    /// Every path under `url` (files and directories alike), each relative to `url` — one
+    /// enumeration pass, mirroring `find <dir>`. Comparing two of these sets proves a copy
+    /// reproduced every source path rather than merely matching item counts.
+    func relativePaths(at url: URL) -> Set<String> {
+        let root = url.standardizedFileURL.path
         guard let enumerator = enumerator(at: url, includingPropertiesForKeys: nil, options: []) else {
-            return fileExists(atPath: url.path) ? 1 : 0
+            return []
         }
-        var count = 1 // the root itself
-        for case _ as URL in enumerator {
-            count += 1
+        var paths: Set<String> = []
+        for case let item as URL in enumerator {
+            let path = item.standardizedFileURL.path
+            if path.hasPrefix(root + "/") {
+                paths.insert(String(path.dropFirst(root.count + 1)))
+            }
         }
-        return count
+        return paths
     }
 }

@@ -30,7 +30,12 @@ public struct ProcessResult: Sendable, Hashable {
 /// confined to a single `@unchecked Sendable` worker so nothing non-Sendable crosses
 /// a concurrency boundary under `SWIFT_STRICT_CONCURRENCY: complete`.
 public actor ProcessRunner {
-    public init() {}
+    /// How long after the timeout's SIGTERM to wait before escalating to SIGKILL.
+    private let killGracePeriod: Duration
+
+    public init(killGracePeriod: Duration = .seconds(2)) {
+        self.killGracePeriod = killGracePeriod
+    }
 
     public func run(
         _ arguments: [String],
@@ -43,7 +48,8 @@ public actor ProcessRunner {
                 arguments: arguments,
                 executable: executable,
                 currentDirectory: currentDirectory,
-                timeout: timeout
+                timeout: timeout,
+                killGracePeriod: killGracePeriod
             )
             worker.start { result in
                 continuation.resume(returning: result)
@@ -60,16 +66,18 @@ private final class ProcessWorker: @unchecked Sendable {
     private let executable: String
     private let currentDirectory: URL?
     private let timeout: Duration?
+    private let killGracePeriod: Duration
 
     private var outData = Data()
     private var errData = Data()
     private var didTimeout = false
 
-    init(arguments: [String], executable: String, currentDirectory: URL?, timeout: Duration?) {
+    init(arguments: [String], executable: String, currentDirectory: URL?, timeout: Duration?, killGracePeriod: Duration) {
         self.arguments = arguments
         self.executable = executable
         self.currentDirectory = currentDirectory
         self.timeout = timeout
+        self.killGracePeriod = killGracePeriod
     }
 
     func start(completion: @escaping @Sendable (ProcessResult) -> Void) {
@@ -114,7 +122,7 @@ private final class ProcessWorker: @unchecked Sendable {
 
         let watchdog: DispatchWorkItem?
         if let timeout {
-            let item = DispatchWorkItem { [weak self] in self?.fireTimeout() }
+            let item = DispatchWorkItem { [weak self] in self?.fireTimeout(on: queue) }
             queue.asyncAfter(deadline: .now() + timeout.secondsDouble, execute: item)
             watchdog = item
         } else {
@@ -133,10 +141,16 @@ private final class ProcessWorker: @unchecked Sendable {
         }
     }
 
-    private func fireTimeout() {
-        if process.isRunning {
-            didTimeout = true
-            process.terminate()
+    private func fireTimeout(on queue: DispatchQueue) {
+        guard process.isRunning else { return }
+        didTimeout = true
+        process.terminate() // SIGTERM — sufficient for git/ditto in the overwhelming majority of cases.
+        // Escalate to SIGKILL if the child ignores SIGTERM and is still alive after a short grace
+        // period. Without this a signal-ignoring child keeps the pipes open, so the reads never EOF
+        // and the DispatchGroup never completes — the "bounded" call would hang forever.
+        queue.asyncAfter(deadline: .now() + killGracePeriod.secondsDouble) { [weak self] in
+            guard let self, self.process.isRunning else { return }
+            kill(self.process.processIdentifier, SIGKILL)
         }
     }
 }

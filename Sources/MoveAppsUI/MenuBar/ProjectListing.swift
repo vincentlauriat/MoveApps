@@ -106,6 +106,10 @@ public enum ProjectListing {
             return "Lien vers un autre projet : \(url.lastPathComponent) → \(other)"
         case .checkoutReferenceWriteFailed(let reason):
             return "Échec d'écriture de la trace de prise : \(reason)"
+        case .residualScanIncomplete:
+            return "Analyse des références résiduelles incomplète (dossier illisible)"
+        case .symlinkScanIncomplete:
+            return "Analyse des liens symboliques incomplète (dossier illisible)"
         }
     }
 }

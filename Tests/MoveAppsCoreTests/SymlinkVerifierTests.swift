@@ -56,4 +56,16 @@ struct SymlinkVerifierTests {
         let broken = warnings.contains { if case .brokenSymlink = $0 { return true }; return false }
         #expect(broken)
     }
+
+    @Test("an unreadable root is flagged as incomplete, not silently clean")
+    func unreadableRootIsIncomplete() {
+        // A non-existent root makes `contentsOfDirectory` throw — the same failure branch a
+        // permission-denied root hits. The scan must surface `.symlinkScanIncomplete` rather than
+        // return an empty (falsely clean) result.
+        let missing = Fixture.makeTempDir().appendingPathComponent("does-not-exist")
+
+        let warnings = SymlinkVerifier().scan(root: missing)
+        let incomplete = warnings.contains { if case .symlinkScanIncomplete = $0 { return true }; return false }
+        #expect(incomplete)
+    }
 }

@@ -25,7 +25,15 @@ public struct SymlinkVerifier: Sendable {
         let rootPath = standardized(root).path
         let appsRoot = standardized(root.deletingLastPathComponent()).path
 
-        for link in symlinks(under: root) {
+        var rootUnreadable = false
+        let links = symlinks(under: root, rootUnreadable: &rootUnreadable)
+        // A root that can't be enumerated makes "no problematic links" unreliable — surface it
+        // rather than returning an empty (falsely clean) result.
+        if rootUnreadable {
+            warnings.append(.symlinkScanIncomplete)
+        }
+
+        for link in links {
             guard let target = try? fileManager.destinationOfSymbolicLink(atPath: link.path) else { continue }
             let resolved = resolvedTarget(target, linkParent: link.deletingLastPathComponent())
             let resolvedPath = resolved.path
@@ -45,14 +53,17 @@ public struct SymlinkVerifier: Sendable {
         return warnings
     }
 
-    private func symlinks(under root: URL) -> [URL] {
+    private func symlinks(under root: URL, rootUnreadable: inout Bool) -> [URL] {
         var result: [URL] = []
-        func walk(_ url: URL) {
+        func walk(_ url: URL, isRoot: Bool) {
             guard let items = try? fileManager.contentsOfDirectory(
                 at: url,
                 includingPropertiesForKeys: [.isSymbolicLinkKey, .isDirectoryKey],
                 options: []
-            ) else { return }
+            ) else {
+                if isRoot { rootUnreadable = true }
+                return
+            }
             for item in items {
                 if Self.excludedDirectoryNames.contains(item.lastPathComponent) {
                     continue
@@ -61,11 +72,11 @@ public struct SymlinkVerifier: Sendable {
                 if values?.isSymbolicLink == true {
                     result.append(item)
                 } else if values?.isDirectory == true {
-                    walk(item)
+                    walk(item, isRoot: false)
                 }
             }
         }
-        walk(root)
+        walk(root, isRoot: true)
         return result
     }
 

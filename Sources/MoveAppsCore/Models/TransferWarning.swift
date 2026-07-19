@@ -26,6 +26,13 @@ public enum TransferWarning: Sendable, Hashable, Codable {
     case brokenSymlink(URL, target: String)
     /// A symlink under the destination points into a *different* project's tree.
     case crossProjectSymlink(URL, target: String, otherProject: String)
+    /// The residual old-path scan could not enumerate the destination root (e.g. permission
+    /// denied), so its "no references found" result is unreliable. Surfaced so an incomplete
+    /// safety scan is never mistaken for a clean one.
+    case residualScanIncomplete
+    /// The symlink scan could not enumerate the destination root, so its "no problematic links"
+    /// result is unreliable. Surfaced so an incomplete safety scan is never mistaken for a clean one.
+    case symlinkScanIncomplete
     /// The Archive checkout marker couldn't be written back after an Archive → Active transfer,
     /// leaving the source slot without a "taken" trace. Not critical (the transfer itself
     /// succeeded), but surfaced so the hole is never silent.

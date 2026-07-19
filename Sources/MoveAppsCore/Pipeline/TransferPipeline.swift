@@ -228,8 +228,11 @@ public actor TransferPipeline {
         // 11. Residual old-path references.
         emit(.scanningResidualPaths)
         let residual = residualScanner.scan(root: destination, forPath: source.path)
-        if !residual.isEmpty {
-            warnings.append(.residualPathReferences(files: residual))
+        if !residual.matches.isEmpty {
+            warnings.append(.residualPathReferences(files: residual.matches))
+        }
+        if residual.incomplete {
+            warnings.append(.residualScanIncomplete)
         }
 
         // 12. Broken / cross-project symlinks.

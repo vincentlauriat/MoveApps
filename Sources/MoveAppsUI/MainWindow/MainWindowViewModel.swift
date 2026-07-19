@@ -40,6 +40,7 @@ public final class MainWindowViewModel {
     private let historyStore: TransferHistoryStore
     private let sizeCache: ProjectSizeCache
     private let debugLog: DebugLogStore
+    private let notifier = TransferNotifier()
 
     public init(
         rootPaths: RootPathsController,
@@ -321,6 +322,7 @@ public final class MainWindowViewModel {
             }
             if let finalResult {
                 try? await self.historyStore.append(TransferRecord(plan: plan, result: finalResult))
+                self.notifier.notifyIfBackgrounded(projectName: plan.project.name, result: finalResult)
             }
             self.isRunning = false
             self.activeName = nil
@@ -361,6 +363,7 @@ public final class MainWindowViewModel {
                 }
                 if let finalResult {
                     try? await self.historyStore.append(TransferRecord(plan: plan, result: finalResult))
+                    self.notifier.notifyIfBackgrounded(projectName: plan.project.name, result: finalResult)
                 }
             }
             self.isRunning = false

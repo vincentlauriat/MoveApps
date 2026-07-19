@@ -52,8 +52,8 @@ struct HistoryRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Image(systemName: statusIcon)
-                    .foregroundStyle(statusColor)
+                Image(systemName: record.status.iconName)
+                    .foregroundStyle(record.status.tint)
                 Text(record.projectName)
                     .font(.system(.body, design: .rounded, weight: .semibold))
                 Spacer()
@@ -67,8 +67,8 @@ struct HistoryRowView: View {
                 Image(systemName: "arrow.right")
                 Text(rootLabel(record.to))
                 Spacer()
-                Text(statusLabel)
-                    .foregroundStyle(statusColor)
+                Text(record.status.label)
+                    .foregroundStyle(record.status.tint)
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -87,36 +87,8 @@ struct HistoryRowView: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassEffect(
-            .regular.tint(statusColor.opacity(0.12)),
+            .regular.tint(record.status.tint.opacity(0.12)),
             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
         )
     }
-
-    private var statusIcon: String {
-        switch record.status {
-        case .ok: return "checkmark.circle.fill"
-        case .warning: return "exclamationmark.triangle.fill"
-        case .critical: return "xmark.octagon.fill"
-        case .failed: return "xmark.circle.fill"
-        }
-    }
-
-    private var statusColor: Color {
-        switch record.status {
-        case .ok: return .green
-        case .warning: return .orange
-        case .critical: return .red
-        case .failed: return .red
-        }
-    }
-
-    private var statusLabel: String {
-        switch record.status {
-        case .ok: return "Terminé"
-        case .warning: return "Avertissements"
-        case .critical: return "Critique — source préservée"
-        case .failed: return "Échec"
-        }
-    }
-
 }

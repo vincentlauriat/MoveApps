@@ -25,6 +25,12 @@ public struct MainWindowView: View {
     @State private var showHistory = false
     @State private var searchText = ""
 
+    /// The last problematic transfer result being surfaced in the floating banner. Cleared on
+    /// dismiss, when a new run starts (`lastResult` becomes `nil`), and — for `.warning` only —
+    /// after a short delay. `.critical`/`.failed` stay until dismissed, since they may signal data
+    /// at risk and must not vanish before they're seen.
+    @State private var banner: TransferResult?
+
     public init() {}
 
     public var body: some View {
@@ -44,8 +50,12 @@ public struct MainWindowView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            VStack {
+            VStack(spacing: 10) {
                 Spacer()
+                if let banner {
+                    resultBanner(banner)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
                 if model.isRunning {
                     progressPill
                         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -55,8 +65,19 @@ public struct MainWindowView: View {
                 }
             }
             .padding(.bottom, 18)
+            .padding(.horizontal, 18)
             .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.isRunning)
             .animation(.spring(response: 0.4, dampingFraction: 0.85), value: model.selection)
+            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: banner)
+        }
+        .onChange(of: model.lastResult) { _, result in
+            // A new run clears `lastResult` first, retiring any stale banner; a clean `.ok` leaves
+            // an existing banner alone (so a critical result isn't wiped by a later fine one in a
+            // batch); a problem shows, but never downgrades a more severe banner already up.
+            guard let result else { banner = nil; return }
+            guard result.status != .ok else { return }
+            if let banner, severity(banner.status) > severity(result.status) { return }
+            banner = result
         }
         .frame(minWidth: 640, minHeight: 420)
         .toolbar {
@@ -122,6 +143,81 @@ public struct MainWindowView: View {
             if model.projects.isEmpty { model.refresh() }
             model.loadHistory()
             dashboard.refresh()
+            TransferNotifier().requestAuthorization()
+        }
+    }
+
+    /// A floating result banner in the same glass family as `progressPill`/`batchPill`, shown after
+    /// a transfer ends in trouble. `.critical` spells out that the source was preserved (so the card
+    /// appearing in both columns doesn't read as a silent duplicate); `.failed` shows its reason.
+    private func resultBanner(_ result: TransferResult) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: result.status.iconName)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(result.status.tint)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(result.status.label)
+                    .font(.system(.callout, weight: .semibold))
+                    .foregroundStyle(result.status.tint)
+                Text(bannerDetail(result))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 8)
+            Button("Voir l'historique") {
+                model.loadHistory()
+                showHistory = true
+                banner = nil
+            }
+            .buttonStyle(.glass)
+            .controlSize(.small)
+            Button {
+                banner = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 12, weight: .bold))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .help("Masquer")
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .frame(maxWidth: 520)
+        .glassEffect(
+            .regular.tint(result.status.tint.opacity(0.18)),
+            in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+        )
+        .shadow(color: .black.opacity(0.15), radius: 12, y: 6)
+        .task(id: banner) {
+            // Auto-dismiss warnings only; critical/failed stay until the user dismisses them.
+            guard banner?.status == .warning else { return }
+            try? await Task.sleep(for: .seconds(6))
+            if banner?.status == .warning { banner = nil }
+        }
+    }
+
+    private func bannerDetail(_ result: TransferResult) -> String {
+        switch result.status {
+        case .ok:
+            return ""
+        case .warning:
+            return "Le transfert s'est terminé avec des avertissements — voir l'historique pour le détail."
+        case .critical:
+            return "La source a été préservée : le projet apparaît dans les deux colonnes. Vérifiez la copie avant de supprimer quoi que ce soit."
+        case .failed:
+            return result.failureReason ?? "Le transfert a échoué."
+        }
+    }
+
+    /// Ranks statuses so the banner never lets a lighter result overwrite a graver one still up.
+    private func severity(_ status: TransferResult.Status) -> Int {
+        switch status {
+        case .ok: return 0
+        case .warning: return 1
+        case .critical, .failed: return 2
         }
     }
 

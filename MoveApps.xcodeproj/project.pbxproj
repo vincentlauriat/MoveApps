@@ -60,12 +60,14 @@
 		BBB34C555F956C2210F2406A /* GitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9239C0B1F7878177AFDD0E4A /* GitService.swift */; };
 		BC1B9BE4FDEB969F0FBB9D74 /* TransferPipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9486C42A3BDF4699B1316F35 /* TransferPipelineTests.swift */; };
 		BCD2853A73ED4FCEE4663060 /* IndexGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48D5603CF47A8BA47C643CDF /* IndexGeneratorTests.swift */; };
+		C03EC1DB61968BA04619275B /* TransferNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE5F31C9C01B1182BD18A896 /* TransferNotifier.swift */; };
 		C33A33CF366832B992890806 /* SymlinkVerifierTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AA0690CA21BFAB0E626C3B /* SymlinkVerifierTests.swift */; };
 		C66516C5D8844077804E3811 /* MoveAppsCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 94FFDF8771D100B593554BE0 /* MoveAppsCore.framework */; };
 		C72C5A5114E3105DFC270E36 /* ProcessRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7BC3B2009ED3B486B8AD131 /* ProcessRunner.swift */; };
 		CAFD3DFE54D281745F7DB56E /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 5EDF22813C65CA385250CAA5 /* Sparkle */; };
 		CC45C25E3E5D5495B7585BD3 /* MoveAppsCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C17936AFBFBD8AFB8211A962 /* MoveAppsCore.swift */; };
 		D1C4553503C74B5EA2FA96BC /* ProjectScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0292D9031A804A53996C5D1 /* ProjectScannerTests.swift */; };
+		D28A293659B3045D85A9D744 /* TransferStatusStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8DF96FC45BEC1F17BA3A6 /* TransferStatusStyle.swift */; };
 		D36F15163571DCC5689DA8F6 /* DiskUsageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B5A072FC56952F69AF2875 /* DiskUsageTests.swift */; };
 		D37D53957FB3644C7475BB7B /* VenvManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7D1A1E0014FA04DACEA644D /* VenvManager.swift */; };
 		D48BD2B74FAFF82EB186A6CF /* TransferPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 252C966A9B6D3A56AF38D1AF /* TransferPipeline.swift */; };
@@ -82,6 +84,7 @@
 		F509E62CF65C3817C3C70E60 /* VenvInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B7C7756FA01A4DE4A9A0CCA /* VenvInfo.swift */; };
 		F542B231F2D3ED71BCED3CE8 /* ProjectScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFEF92B92BAFDE5DB09CB98 /* ProjectScanner.swift */; };
 		F5456DACB3721ADEA6A83361 /* GitStatusEntryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AEAD7216A3AACA1142F45D4 /* GitStatusEntryTests.swift */; };
+		F8B2FD42E580A907D1B6E093 /* DirectoryMoverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9D538EC1775E1BB723C143C /* DirectoryMoverTests.swift */; };
 		FC1F03550CAC39C457945792 /* TemplateServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83B1D1AA6FEB6352E1B8B6A1 /* TemplateServiceTests.swift */; };
 		FC570CB895C7422E87CE66BE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9BAAD716B86C5E9FC9AC9EE /* AppDelegate.swift */; };
 		FF17737DD1A8E07F9F51DA0D /* pre-tool-advisory-throttle.json in Resources */ = {isa = PBXBuildFile; fileRef = BAD1EE770B46B734356064FD /* pre-tool-advisory-throttle.json */; };
@@ -197,6 +200,7 @@
 		A401436E1738F5237009A6A9 /* ProjectCandidate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectCandidate.swift; sourceTree = "<group>"; };
 		A4E4CD08CAEA374123B11FBB /* TransferStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferStep.swift; sourceTree = "<group>"; };
 		A7D1A1E0014FA04DACEA644D /* VenvManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VenvManager.swift; sourceTree = "<group>"; };
+		AE5F31C9C01B1182BD18A896 /* TransferNotifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferNotifier.swift; sourceTree = "<group>"; };
 		B0292D9031A804A53996C5D1 /* ProjectScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectScannerTests.swift; sourceTree = "<group>"; };
 		B0E2628855A681C632CB6B68 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B3AA0690CA21BFAB0E626C3B /* SymlinkVerifierTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymlinkVerifierTests.swift; sourceTree = "<group>"; };
@@ -219,7 +223,9 @@
 		E367A79FD3582EF9BA05AB91 /* MainWindowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		E7BC3B2009ED3B486B8AD131 /* ProcessRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessRunner.swift; sourceTree = "<group>"; };
 		E85447F10CCF259B8F630D2B /* TransferHistoryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferHistoryStoreTests.swift; sourceTree = "<group>"; };
+		E9D538EC1775E1BB723C143C /* DirectoryMoverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DirectoryMoverTests.swift; sourceTree = "<group>"; };
 		EDB4C3150E7C1F7304C836B4 /* MoveApps.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MoveApps.entitlements; sourceTree = "<group>"; };
+		F0E8DF96FC45BEC1F17BA3A6 /* TransferStatusStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferStatusStyle.swift; sourceTree = "<group>"; };
 		F10C235B8212372E619F1AAD /* SymlinkVerifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SymlinkVerifier.swift; sourceTree = "<group>"; };
 		FB67AEC8DD926511C430D4BE /* RootPathsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPathsController.swift; sourceTree = "<group>"; };
 		FE922E1A1FA522002C38EE0F /* MenuBarIconView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarIconView.swift; sourceTree = "<group>"; };
@@ -300,6 +306,7 @@
 			children = (
 				5A54F77D31FB7E8204BDCB8E /* .omc */,
 				7F7E7E8ADC069C26F1BEFAC3 /* CheckoutReferenceStoreTests.swift */,
+				E9D538EC1775E1BB723C143C /* DirectoryMoverTests.swift */,
 				18B5A072FC56952F69AF2875 /* DiskUsageTests.swift */,
 				3AEAD7216A3AACA1142F45D4 /* GitStatusEntryTests.swift */,
 				30A511B7606634EF61E2AE2A /* ICloudMaterializerTests.swift */,
@@ -406,6 +413,7 @@
 				E367A79FD3582EF9BA05AB91 /* MainWindowView.swift */,
 				88A896A9D9BAEF023D644C35 /* MainWindowViewModel.swift */,
 				C1E69FC94B5048C93C551898 /* TransferHistoryView.swift */,
+				AE5F31C9C01B1182BD18A896 /* TransferNotifier.swift */,
 				5CBFB3FC41AE6D12B1C7442C /* TransferPlanView.swift */,
 			);
 			path = MainWindow;
@@ -437,6 +445,7 @@
 				85347C5B2D9836460CAB1BC8 /* DebugLogStore.swift */,
 				8614C23073C9890380A9C262 /* RootAccent.swift */,
 				5A618C225036F709B660D414 /* StackTagStyle.swift */,
+				F0E8DF96FC45BEC1F17BA3A6 /* TransferStatusStyle.swift */,
 			);
 			path = Support;
 			sourceTree = "<group>";
@@ -721,7 +730,9 @@
 				89B00F52B66ED0D54A70825F /* SettingsView.swift in Sources */,
 				4667573F5C9443F43AE1B437 /* StackTagStyle.swift in Sources */,
 				90C1F1D50F0E7C603EAAAC44 /* TransferHistoryView.swift in Sources */,
+				C03EC1DB61968BA04619275B /* TransferNotifier.swift in Sources */,
 				5F0909B0F6EB1252E28DE6FC /* TransferPlanView.swift in Sources */,
+				D28A293659B3045D85A9D744 /* TransferStatusStyle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -730,6 +741,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A520F65ACB875961ED457105 /* CheckoutReferenceStoreTests.swift in Sources */,
+				F8B2FD42E580A907D1B6E093 /* DirectoryMoverTests.swift in Sources */,
 				D36F15163571DCC5689DA8F6 /* DiskUsageTests.swift in Sources */,
 				F5456DACB3721ADEA6A83361 /* GitStatusEntryTests.swift in Sources */,
 				A7CF2AEC5034DB10995A8833 /* ICloudMaterializerTests.swift in Sources */,

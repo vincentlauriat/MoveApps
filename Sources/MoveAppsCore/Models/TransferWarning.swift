@@ -15,6 +15,11 @@ public enum TransferWarning: Sendable, Hashable, Codable {
     /// Git reports tracked files deleted after the move that were not deleted before.
     /// This is the `onyx` production bug signal and drives `TransferResult.Status.critical`.
     case gitDeletedFilesDetected(paths: [String])
+    /// The ditto fallback dropped working-tree files git cannot see as deletions (untracked or
+    /// gitignored, e.g. a local `.env`). Caught by the mover's path-set comparison and escalated
+    /// here — the same silent-loss class as `onyx`, but outside git's visibility. Drives
+    /// `TransferResult.Status.critical` and preserves the source.
+    case untrackedFileLostInCopy(paths: [String])
     /// Files under the destination still reference the old absolute source path.
     case residualPathReferences(files: [URL])
     /// A symlink under the destination points at a missing absolute target.
@@ -28,7 +33,9 @@ public enum TransferWarning: Sendable, Hashable, Codable {
 
     /// Whether this warning must escalate the overall result to `.critical`.
     public var isCritical: Bool {
-        if case .gitDeletedFilesDetected = self { return true }
-        return false
+        switch self {
+        case .gitDeletedFilesDetected, .untrackedFileLostInCopy: return true
+        default: return false
+        }
     }
 }

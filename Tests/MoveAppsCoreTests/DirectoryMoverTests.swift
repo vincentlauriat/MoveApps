@@ -44,6 +44,6 @@ struct DirectoryMoverTests {
         let mover = DirectoryMover(copier: FaultInjectingCopier(), alwaysUseCopier: true)
         let outcome = await mover.move(from: source, to: tmp.appendingPathComponent("copy"))
 
-        #expect(outcome == .copiedPendingDeletion)
+        #expect(outcome == .copiedPendingDeletion(missingPaths: []))
     }
 }

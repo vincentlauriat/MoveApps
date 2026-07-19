@@ -59,6 +59,35 @@ struct TransferPipelineTests {
         #expect(FileManager.default.fileExists(atPath: scenario.source.path))
     }
 
+    /// The onyx hole that git alone cannot close: the copier drops a gitignored working-tree
+    /// file (a local `.env`), so `git status` on the destination reports no deletion — yet the
+    /// file is gone. The mover's path-set comparison must surface it and the pipeline must
+    /// escalate to `.critical`, preserving the source, just as for a tracked loss.
+    @Test("gitignored file silently dropped in copy is caught as critical and source is preserved")
+    func untrackedLossDetection() async {
+        let scenario = makeScenario(files: [
+            ".gitignore": "secret.env\n",
+            "secret.env": "SECRET=1\n",
+            "README.md": "onyx\n",
+        ])
+        defer { try? FileManager.default.removeItem(at: scenario.cleanup) }
+
+        // Drops the gitignored `secret.env` yet keeps totals equal (adds a .DS_Store). Git sees
+        // no deletion (the file was never tracked); only the path-set check can catch it.
+        let mover = DirectoryMover(
+            copier: FaultInjectingCopier(drop: "secret.env"),
+            alwaysUseCopier: true
+        )
+        let pipeline = TransferPipeline(roots: scenario.roots, mover: mover)
+
+        let result = await pipeline.finalResult(for: scenario.plan)
+
+        #expect(result?.status == .critical)
+        // The source MUST NOT have been deleted.
+        #expect(result?.sourceDeleted == false)
+        #expect(FileManager.default.fileExists(atPath: scenario.source.appendingPathComponent("secret.env").path))
+    }
+
     // MARK: - Happy path
 
     @Test("happy path: native rename yields ok and removes the source")

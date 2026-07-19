@@ -130,12 +130,17 @@ public actor TransferPipeline {
         // 5. Move.
         let outcome = await mover.move(from: source, to: destination)
         let wasRename: Bool
+        // Source-relative paths the mover's path-set check found missing from the copy. For a git
+        // source the mover never hard-fails on these; the escalation happens below, after the git
+        // snapshot, so untracked/gitignored losses git cannot see still preserve the source.
+        var copiedMissingPaths: [String] = []
         switch outcome {
         case .renamed:
             wasRename = true
             emit(.moving(strategy: .rename))
-        case .copiedPendingDeletion:
+        case .copiedPendingDeletion(let missingPaths):
             wasRename = false
+            copiedMissingPaths = missingPaths
             emit(.moving(strategy: .dittoFallback))
         case .failed(let reason):
             emit(.finished(.failed(reason: reason, destinationURL: nil, warnings: warnings)))
@@ -152,6 +157,15 @@ public actor TransferPipeline {
             } else if before.dirtyCount != after.dirtyCount {
                 warnings.append(.gitDirtyCountChanged(before: before.dirtyCount, after: after.dirtyCount))
             }
+        }
+
+        // Path-set losses git cannot report as deletions (untracked / gitignored working-tree
+        // files the ditto fallback dropped). Only signal the ones the git snapshot did not already
+        // catch, so a tracked loss is never counted twice. This is a no-op for renames and non-git
+        // sources (their `copiedMissingPaths` is always empty).
+        let gitInvisibleLosses = copiedMissingPaths.filter { !after.deletedPaths.contains($0) }
+        if !gitInvisibleLosses.isEmpty {
+            warnings.append(.untrackedFileLostInCopy(paths: gitInvisibleLosses))
         }
 
         let isCritical = warnings.contains { $0.isCritical }

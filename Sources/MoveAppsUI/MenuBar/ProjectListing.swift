@@ -96,6 +96,8 @@ public enum ProjectListing {
             return "Nombre de fichiers modifiés git différent (\(before) → \(after))"
         case .gitDeletedFilesDetected(let paths):
             return "Fichiers suivis supprimés détectés : \(paths.count)"
+        case .untrackedFileLostInCopy(let paths):
+            return "Fichiers non suivis perdus à la copie : \(paths.count)"
         case .residualPathReferences(let files):
             return "Références au chemin source résiduelles : \(files.count) fichier(s)"
         case .brokenSymlink(let url, let target):

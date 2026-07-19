@@ -7,3 +7,12 @@ xcuserdata/
 release/
 .omc/
 
+COMMANDS.md
+MEMORY.md
+CHANGES.md
+PLAN.md
+TODOS.md
+
+
+
+move-app.sh

@@ -30,4 +30,14 @@ public struct TransferPlan: Sendable, Identifiable, Hashable {
         self.reinstallNode = reinstallNode
         self.destinationContainer = destinationContainer
     }
+
+    /// Whether `name` is a safe single-level destination folder name. Rejects anything that could
+    /// escape the destination root once fed to `appendingPathComponent` + `createDirectory`:
+    /// an empty (after trim) name, a path separator (`../foo`, `a/b`, `/etc`), or the `.`/`..`
+    /// directory references. Mirrors `TemplateService`'s project-name rule (no `/`), extended with
+    /// the `.`/`..` guards a category folder additionally needs.
+    public static func isValidContainerName(_ name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && !trimmed.contains("/") && trimmed != "." && trimmed != ".."
+    }
 }

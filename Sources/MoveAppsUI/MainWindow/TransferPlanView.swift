@@ -77,6 +77,7 @@ struct TransferPlanView: View {
                 }
                 .keyboardShortcut(.defaultAction)
                 .buttonStyle(.glassProminent)
+                .disabled(newContainerIsInvalid)
             }
         }
         .padding(22)
@@ -109,6 +110,11 @@ struct TransferPlanView: View {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 7)
                     .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                if newContainerIsInvalid {
+                    Text("Nom de dossier invalide (évitez « / », « . » ou « .. »).")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
             }
         }
         .padding(14)
@@ -140,6 +146,15 @@ struct TransferPlanView: View {
             let trimmed = newContainer.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed.isEmpty ? nil : trimmed
         }
+    }
+
+    /// True when the user is typing a new folder name that is present but unsafe (a path separator
+    /// or `.`/`..`). An empty field stays valid — it just means "land at the root". Gates the
+    /// Confirm button so a traversal-shaped name never reaches the pipeline.
+    private var newContainerIsInvalid: Bool {
+        guard destination == .new else { return false }
+        let trimmed = newContainer.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && !TransferPlan.isValidContainerName(trimmed)
     }
 
     private var sourceLabel: String {

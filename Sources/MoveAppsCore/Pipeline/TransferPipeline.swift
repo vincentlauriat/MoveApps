@@ -78,8 +78,16 @@ public actor TransferPipeline {
         // Place the project under an optional category folder on the destination side, creating
         // that folder if needed — this is what lets a project keep or change its container folder
         // across a transfer instead of being flattened to the root.
+        //
+        // Authoritative path-traversal guard (defense in depth behind the UI validation): a
+        // container name that could escape the destination root must be refused before it ever
+        // reaches `appendingPathComponent`/`createDirectory` or touches the checkout store.
         let destinationDir: URL
         if let container = plan.destinationContainer, !container.isEmpty {
+            guard TransferPlan.isValidContainerName(container) else {
+                emit(.finished(.failed(reason: "nom de dossier de destination invalide : \(container)", destinationURL: nil)))
+                return
+            }
             destinationDir = roots.url(for: plan.to).appendingPathComponent(container, isDirectory: true)
         } else {
             destinationDir = roots.url(for: plan.to)

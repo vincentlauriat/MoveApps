@@ -88,6 +88,33 @@ struct TransferPipelineTests {
         #expect(FileManager.default.fileExists(atPath: scenario.source.appendingPathComponent("secret.env").path))
     }
 
+    // MARK: - Destination folder validation (path traversal)
+
+    @Test("a path-traversal container name is refused before any directory is created")
+    func rejectsTraversalContainer() async {
+        let scenario = makeScenario(repoName: "trav-project", files: [
+            "main.swift": "print(\"hi\")\n",
+        ])
+        defer { try? FileManager.default.removeItem(at: scenario.cleanup) }
+
+        // "../evil" would escape the destination active root up into the shared tmp parent.
+        let malicious = TransferPlan(
+            project: scenario.plan.project,
+            from: .archive,
+            to: .active,
+            destinationContainer: "../evil"
+        )
+        let pipeline = TransferPipeline(roots: scenario.roots)
+        let result = await pipeline.finalResult(for: malicious)
+
+        #expect(result?.status == .failed)
+        // The source is untouched and nothing was created outside the destination root.
+        #expect(result?.sourceDeleted == false)
+        #expect(FileManager.default.fileExists(atPath: scenario.source.appendingPathComponent("main.swift").path))
+        let escaped = scenario.cleanup.appendingPathComponent("evil")
+        #expect(!FileManager.default.fileExists(atPath: escaped.path))
+    }
+
     // MARK: - Happy path
 
     @Test("happy path: native rename yields ok and removes the source")

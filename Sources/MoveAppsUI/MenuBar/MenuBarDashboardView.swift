@@ -56,6 +56,7 @@ public struct MenuBarDashboardView: View {
             .buttonStyle(.glass)
             .buttonBorderShape(.circle)
             .help("Rafraîchir")
+            .accessibilityLabel("Rafraîchir")
             .disabled(model.isScanning)
         }
     }

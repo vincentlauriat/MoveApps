@@ -182,6 +182,7 @@ public struct MainWindowView: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .help("Masquer")
+            .accessibilityLabel("Masquer")
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
@@ -531,6 +532,7 @@ struct MainProjectRowView: View {
             .disabled(disabled || isLocked)
             .opacity(isLocked ? 0.35 : 1)
             .help(isSelected ? "Désélectionner" : "Sélectionner")
+            .accessibilityLabel(isSelected ? "Désélectionner" : "Sélectionner")
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(project.candidate.name)
@@ -566,6 +568,7 @@ struct MainProjectRowView: View {
                 .tint(rootAccent(project.destination))
                 .disabled(disabled)
                 .help("Transférer vers \(rootLabel(project.destination))")
+                .accessibilityLabel("Transférer vers \(rootLabel(project.destination))")
             }
         }
         .padding(.vertical, 10)

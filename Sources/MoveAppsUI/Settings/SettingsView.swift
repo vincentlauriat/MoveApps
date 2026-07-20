@@ -77,6 +77,11 @@ public struct SettingsView: View {
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }
+            if let pickError = rootPaths.lastPickError, pickError.kind == kind {
+                Label(pickError.message, systemImage: "exclamationmark.octagon.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+            }
         }
         .padding(.vertical, 3)
     }

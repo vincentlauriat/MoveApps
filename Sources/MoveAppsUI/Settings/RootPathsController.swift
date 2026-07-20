@@ -20,6 +20,17 @@ public final class RootPathsController {
     /// "to reconfigure" hint and falls back to the default path rather than crashing.
     public private(set) var rootsNeedingReconfiguration: Set<RootKind> = []
 
+    /// The last rejected directory pick, surfaced next to the matching "Choisir…" button. Set when
+    /// a chosen folder collides with the other root (source == destination would be nonsensical),
+    /// cleared on the next successful pick.
+    public private(set) var lastPickError: RootPickError?
+
+    /// A rejected pick tied to the root whose button it should appear beside.
+    public struct RootPickError: Equatable {
+        public let kind: RootKind
+        public let message: String
+    }
+
     /// The templates folder isn't a `RootKind` (not a transfer endpoint), so it gets its own
     /// bookmark slot alongside the two roots.
     private let templatesKey = "rootBookmark.templates"
@@ -55,6 +66,15 @@ public final class RootPathsController {
     /// Presents an `NSOpenPanel` to choose a directory for the given root and persists it.
     public func chooseDirectory(for kind: RootKind) {
         guard let url = pickDirectory(startingAt: settings.url(for: kind)) else { return }
+        let other: RootKind = kind == .active ? .archive : .active
+        guard !RootPathsSettings.rootsCollide(url, settings.url(for: other)) else {
+            lastPickError = RootPickError(
+                kind: kind,
+                message: "Identique à l'autre racine — choisissez un dossier différent."
+            )
+            return
+        }
+        lastPickError = nil
         apply(url: url, for: kind)
         storeBookmark(for: url, key: defaultsKey(for: kind))
         rootsNeedingReconfiguration.remove(kind)

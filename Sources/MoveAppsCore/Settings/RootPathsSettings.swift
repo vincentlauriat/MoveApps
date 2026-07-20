@@ -72,4 +72,11 @@ public final class RootPathsSettings {
         case .archive: return home.appendingPathComponent("Documents/GitHub", isDirectory: true)
         }
     }
+
+    /// Whether two roots point at the same folder — a configuration that would make a transfer
+    /// nonsensical (source == destination). Compares standardized file URLs so trailing-slash and
+    /// `.`/`..` variants of the same path are treated as identical.
+    public static func rootsCollide(_ a: URL, _ b: URL) -> Bool {
+        a.standardizedFileURL == b.standardizedFileURL
+    }
 }

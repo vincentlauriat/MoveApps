@@ -35,12 +35,25 @@ public final class RootPathsController {
     /// bookmark slot alongside the two roots.
     private let templatesKey = "rootBookmark.templates"
 
+    /// True only at a genuine first launch: no root was ever configured (no stored bookmark) *and*
+    /// at least one default root folder is missing on disk. Lets the main window show a distinct
+    /// "configure your roots" invitation instead of an ambiguous empty "Aucun projet". Computed once
+    /// at launch and cleared on the first successful pick so the invitation doesn't linger.
+    public private(set) var isUnconfiguredFirstLaunch: Bool = false
+
     public init() {
         self.settings = RootPathsSettings()
         for kind in RootKind.allCases {
             resolveStoredBookmark(for: kind)
         }
         resolveStoredTemplatesBookmark()
+        let neverConfigured = RootKind.allCases.allSatisfy {
+            UserDefaults.standard.data(forKey: defaultsKey(for: $0)) == nil
+        }
+        let aDefaultRootIsMissing = RootKind.allCases.contains {
+            !FileManager.default.fileExists(atPath: RootPathsSettings.defaultURL(for: $0).path(percentEncoded: false))
+        }
+        isUnconfiguredFirstLaunch = neverConfigured && aDefaultRootIsMissing
     }
 
     // MARK: - Display
@@ -75,6 +88,7 @@ public final class RootPathsController {
             return
         }
         lastPickError = nil
+        isUnconfiguredFirstLaunch = false
         apply(url: url, for: kind)
         storeBookmark(for: url, key: defaultsKey(for: kind))
         rootsNeedingReconfiguration.remove(kind)

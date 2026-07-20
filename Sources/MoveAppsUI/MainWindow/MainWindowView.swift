@@ -20,6 +20,7 @@ struct DraggedProject: Codable, Transferable {
 public struct MainWindowView: View {
     @Environment(MainWindowViewModel.self) private var model
     @Environment(DashboardViewModel.self) private var dashboard
+    @Environment(RootPathsController.self) private var rootPaths
     @Environment(\.openWindow) private var openWindow
 
     @State private var showHistory = false
@@ -39,15 +40,19 @@ public struct MainWindowView: View {
         ZStack {
             backgroundWash
 
-            VStack(spacing: 0) {
-                statHeader
+            if rootPaths.isUnconfiguredFirstLaunch {
+                onboardingState
+            } else {
+                VStack(spacing: 0) {
+                    statHeader
 
-                HStack(alignment: .top, spacing: 1) {
-                    RootColumnView(root: .archive, searchText: searchText)
-                    Divider().opacity(0.5)
-                    RootColumnView(root: .active, searchText: searchText)
+                    HStack(alignment: .top, spacing: 1) {
+                        RootColumnView(root: .archive, searchText: searchText)
+                        Divider().opacity(0.5)
+                        RootColumnView(root: .active, searchText: searchText)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
             VStack(spacing: 10) {
@@ -220,6 +225,31 @@ public struct MainWindowView: View {
         case .warning: return 1
         case .critical, .failed: return 2
         }
+    }
+
+    /// Shown at a genuine first launch (no root ever configured and a default root missing) in
+    /// place of the two columns, so a fresh install reads as "set me up" rather than an ambiguous
+    /// empty "Aucun projet".
+    private var onboardingState: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "arrow.left.arrow.right.circle.fill")
+                .font(.system(size: 52))
+                .foregroundStyle(Color.accentColor)
+                .symbolRenderingMode(.hierarchical)
+            Text("Bienvenue dans MoveApps")
+                .font(.system(.title2, design: .rounded, weight: .bold))
+            Text("Configurez d'abord vos deux racines (Actif et Archive) pour commencer à déplacer des projets entre vos Mac.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 420)
+            SettingsLink {
+                Label("Ouvrir les Réglages", systemImage: "gearshape")
+            }
+            .buttonStyle(.glassProminent)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(40)
     }
 
     /// A faint top-down wash of the system accent colour behind the whole window, just enough

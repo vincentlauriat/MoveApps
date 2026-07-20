@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		075D154B567575637FFAFE67 /* InitScriptRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DCF0F1A24FB1EA3A3FFABD2 /* InitScriptRunner.swift */; };
+		0C6AEC18959B45BB77D781C6 /* RootPathsSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 915D0ABEDE68720B16C50EDD /* RootPathsSettingsTests.swift */; };
 		0D58E4BDB3394D96EC85B29F /* MenuBarDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AD8DCB6E0FBD7A85657A92C /* MenuBarDashboardView.swift */; };
 		12ECDF1C612511470B79CC6E /* StackDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB121AC30D21059A7198683 /* StackDetectorTests.swift */; };
 		146299408CF39A0A0C69E72D /* RootPathsSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39B9BFFBD8503D1C39248B52 /* RootPathsSettings.swift */; };
@@ -196,6 +197,7 @@
 		8C9B51A9156E0F6BC7B7F045 /* TestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestSupport.swift; sourceTree = "<group>"; };
 		8E30425B2E771383352E59F5 /* DashboardViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardViewModel.swift; sourceTree = "<group>"; };
 		912F1B556BCB2067D3B7C64A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		915D0ABEDE68720B16C50EDD /* RootPathsSettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootPathsSettingsTests.swift; sourceTree = "<group>"; };
 		9239C0B1F7878177AFDD0E4A /* GitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GitService.swift; sourceTree = "<group>"; };
 		94302EC46A05BC7E9EBEA2BC /* NewProjectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewProjectView.swift; sourceTree = "<group>"; };
 		9486C42A3BDF4699B1316F35 /* TransferPipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferPipelineTests.swift; sourceTree = "<group>"; };
@@ -322,6 +324,7 @@
 				E36FC37204C463C4FC008C9D /* ProcessRunnerTests.swift */,
 				B0292D9031A804A53996C5D1 /* ProjectScannerTests.swift */,
 				2CD579D4C550407AD009B252 /* ResidualPathScannerTests.swift */,
+				915D0ABEDE68720B16C50EDD /* RootPathsSettingsTests.swift */,
 				2AB121AC30D21059A7198683 /* StackDetectorTests.swift */,
 				B3AA0690CA21BFAB0E626C3B /* SymlinkVerifierTests.swift */,
 				83B1D1AA6FEB6352E1B8B6A1 /* TemplateServiceTests.swift */,
@@ -760,6 +763,7 @@
 				71C003F8249E210EE64C081C /* ProcessRunnerTests.swift in Sources */,
 				D1C4553503C74B5EA2FA96BC /* ProjectScannerTests.swift in Sources */,
 				9552224FCD18262D86AA2694 /* ResidualPathScannerTests.swift in Sources */,
+				0C6AEC18959B45BB77D781C6 /* RootPathsSettingsTests.swift in Sources */,
 				12ECDF1C612511470B79CC6E /* StackDetectorTests.swift in Sources */,
 				C33A33CF366832B992890806 /* SymlinkVerifierTests.swift in Sources */,
 				FC1F03550CAC39C457945792 /* TemplateServiceTests.swift in Sources */,

@@ -66,7 +66,7 @@ public struct NewProjectView: View {
             }
         }
         .padding(22)
-        .frame(width: 440, height: 380)
+        .frame(minWidth: 380, idealWidth: 440, minHeight: 320, idealHeight: 380)
         .onAppear {
             // Pick up any templates added since the popover last scanned, then default-select one.
             model.reloadTemplates()

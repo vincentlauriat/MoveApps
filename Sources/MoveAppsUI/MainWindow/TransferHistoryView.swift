@@ -40,7 +40,7 @@ struct TransferHistoryView: View {
                 }
             }
         }
-        .frame(width: 520, height: 460)
+        .frame(minWidth: 440, idealWidth: 520, minHeight: 380, idealHeight: 460)
     }
 }
 

@@ -53,7 +53,7 @@ public struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 420, height: 360)
+        .frame(minWidth: 360, idealWidth: 420, minHeight: 320, idealHeight: 360)
     }
 
     private func rootRow(_ kind: RootKind) -> some View {

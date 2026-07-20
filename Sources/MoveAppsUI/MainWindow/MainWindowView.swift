@@ -93,6 +93,7 @@ public struct MainWindowView: View {
                     Label("Rafraîchir", systemImage: "arrow.clockwise")
                 }
                 .disabled(model.isScanning || model.isRunning)
+                .keyboardShortcut("r")
 
                 Button {
                     model.loadHistory()
@@ -100,6 +101,7 @@ public struct MainWindowView: View {
                 } label: {
                     Label("Historique", systemImage: "clock.arrow.circlepath")
                 }
+                .keyboardShortcut("y")
 
                 Button {
                     openWindow(id: "debug")
@@ -107,6 +109,7 @@ public struct MainWindowView: View {
                     Label("Debug", systemImage: "ladybug")
                 }
                 .help("Ouvrir la fenêtre de debug (suivi détaillé des transferts)")
+                .keyboardShortcut("d", modifiers: [.command, .shift])
 
                 SettingsLink {
                     Label("Réglages", systemImage: "gearshape")

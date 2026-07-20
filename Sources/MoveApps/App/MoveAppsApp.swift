@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import Sparkle
 import MoveAppsCore
 import MoveAppsUI
@@ -68,6 +69,13 @@ struct MoveAppsApp: App {
             CommandGroup(after: .appInfo) {
                 Button("Rechercher les mises à jour…") {
                     updaterController.checkForUpdates(nil)
+                }
+            }
+            CommandGroup(replacing: .help) {
+                Button("Guide d'utilisation MoveApps") {
+                    if let url = URL(string: "https://github.com/vincentlauriat/MoveApps/blob/main/USER_GUIDE.md") {
+                        NSWorkspace.shared.open(url)
+                    }
                 }
             }
         }

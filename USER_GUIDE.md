@@ -27,6 +27,8 @@ Trois façons de transférer un projet d'une racine vers l'autre :
 
 Dans les trois cas, une **fenêtre de confirmation** s'ouvre avant que quoi que ce soit ne bouge réellement : elle permet de choisir le dossier de destination (racine, dossier de catégorie existant, ou nouveau dossier) et deux options (conserver un lien symbolique de compatibilité à l'ancien emplacement, réinstaller `node_modules`). Rien ne se transfère avant d'avoir cliqué sur **Confirmer**.
 
+**Cas particulier — le dossier `Templates`** : ce dossier de premier niveau est une ressource partagée (scripts et squelettes référencés par les deux racines), pas un projet. Il apparaît comme une entrée unique et un transfert le **copie** au lieu de le déplacer : l'original reste en place, aucun verrou de prise n'est posé, et la fenêtre de confirmation dit « Confirmer la copie ». Pour rafraîchir une copie déjà présente de l'autre côté, supprimez-la d'abord (le transfert refuse d'écraser une destination existante).
+
 Une fois confirmé, une pastille de progression apparaît en bas de la fenêtre pendant le transfert (indispensable pour les projets volumineux, l'opération n'est pas instantanée). À la fin, une bannière signale un problème éventuel (avertissement ou échec) ; en cas de résultat critique, la source du projet est toujours préservée par sécurité — voir l'historique pour le détail.
 
 ## 3. Le verrou de prise multi-Mac

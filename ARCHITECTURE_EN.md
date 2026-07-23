@@ -117,3 +117,15 @@ Vincent flagged that transfers can run long with only the compact progress pill 
 
 **Not yet manually verified**: the actual GUI click-through (opening the window from the toolbar, watching it fill live during a real transfer, auto-scroll, the "Effacer" button) — only `xcodebuild` and `MoveAppsCoreTests` (49/49) were reverified green, neither of which exercises SwiftUI interaction.
 
+## Shared resource folders: `Templates` is copied, never moved (2026-07-23)
+
+The root-level `Templates` folder is not a project — it's a shared resource both roots reference by root-relative path (`Templates/Scripts/release-full.sh`, per the cross-root CLAUDE.md convention), so it must exist in *both* roots on every Mac at once. The default transfer semantics broke that twice over: `ProjectScanner` decomposed `Templates` into its children (some of which look like projects — `AppKitTemplate` has its own git), and a transfer *moved* each child away, leaving the source root without it and even writing a checkout marker as if it were a "take".
+
+`SharedResourceFolder` (MoveAppsCore/Models) centralizes the rule: a set of folder names (currently just `Templates`) matched **at the top level of a root only** — a nested folder that merely happens to be named `Templates` inside a project keeps normal move semantics. Three consumers:
+
+- **`ProjectScanner`** surfaces a shared resource folder as one transferable candidate before the project-root/decomposition checks, and excludes it from `containerFolders(in:)` so it's never offered as a destination category folder.
+- **`TransferPlan.isCopyOnly`** (computed from `SharedResourceFolder.isShared`) drives the pipeline. `DirectoryMover.move(from:to:copyOnly:)` skips the native rename outright — a rename would remove the source, the exact thing a shared resource must keep — and goes straight to the verified `ditto` copy; the onyx path-set comparison still applies (and hard-fails a lossy copy, since `Templates` is a non-git source).
+- **`TransferPipeline`** with `copyOnly`: the source is never deleted (which keeps the checkout-marker write and the compatibility symlink naturally off — a copy is not a "take", and the source path stays occupied), the Active→Archive marker-clearing is skipped, and the residual-old-path scan is skipped (references to the source path aren't broken — the source still exists). A new `MoveStrategy.copy` case labels the progress step ("Copie (source conservée)…"), and `TransferPlanView` becomes copy-aware (title "Confirmer la copie", explanatory note, symlink toggle hidden).
+
+Deliberate v1 limitation: copying onto an existing destination still hits the "destination already exists" guard — refreshing a stale copy means deleting it first. A verified in-place replace (copy aside, verify path sets, swap) is the natural follow-up if real use demands it; it was not built speculatively.
+

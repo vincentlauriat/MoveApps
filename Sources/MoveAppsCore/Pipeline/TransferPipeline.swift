@@ -94,10 +94,14 @@ public actor TransferPipeline {
         }
         let destination = destinationDir.appendingPathComponent(plan.project.name)
 
+        // Shared resource folders (e.g. `Templates`) are copied, never moved: the source stays,
+        // no checkout marker is written or cleared, and the copy is not a "take".
+        let copyOnly = plan.isCopyOnly
+
         // Active → Archive check-in: free the destination slot by clearing any checkout marker
         // sitting exactly at it, plus any orphaned marker filed under a different container — so
         // the "destination already exists" guard below sees a genuinely free slot.
-        if plan.to == .archive {
+        if plan.to == .archive && !copyOnly {
             if checkoutStore.read(at: destination) != nil {
                 checkoutStore.clear(at: destination)
             }
@@ -135,8 +139,8 @@ public actor TransferPipeline {
         emit(.snapshottingGitBefore)
         let before = await gitService.snapshot(source)
 
-        // 5. Move.
-        let outcome = await mover.move(from: source, to: destination)
+        // 5. Move — or a pure copy for a shared resource, which must survive at the source.
+        let outcome = await mover.move(from: source, to: destination, copyOnly: copyOnly)
         let wasRename: Bool
         // Source-relative paths the mover's path-set check found missing from the copy. For a git
         // source the mover never hard-fails on these; the escalation happens below, after the git
@@ -149,7 +153,7 @@ public actor TransferPipeline {
         case .copiedPendingDeletion(let missingPaths):
             wasRename = false
             copiedMissingPaths = missingPaths
-            emit(.moving(strategy: .dittoFallback))
+            emit(.moving(strategy: copyOnly ? .copy : .dittoFallback))
         case .failed(let reason):
             emit(.finished(.failed(reason: reason, destinationURL: nil, warnings: warnings)))
             return
@@ -179,9 +183,13 @@ public actor TransferPipeline {
         let isCritical = warnings.contains { $0.isCritical }
 
         // 7. Source deletion decision. Rename already moved the source; the copy path
-        //    deletes only when the git check is clean.
+        //    deletes only when the git check is clean. A shared resource is never deleted —
+        //    keeping the source everywhere is the whole point of copy-only — which also keeps
+        //    the checkout-marker write (7b) and the compatibility symlink (10) naturally off.
         var sourceDeleted: Bool
-        if wasRename {
+        if copyOnly {
+            sourceDeleted = false
+        } else if wasRename {
             sourceDeleted = true
         } else if isCritical {
             sourceDeleted = false // preserve for inspection
@@ -233,14 +241,17 @@ public actor TransferPipeline {
             try? fileManager.createSymbolicLink(at: source, withDestinationURL: destination)
         }
 
-        // 11. Residual old-path references.
-        emit(.scanningResidualPaths)
-        let residual = residualScanner.scan(root: destination, forPath: source.path)
-        if !residual.matches.isEmpty {
-            warnings.append(.residualPathReferences(files: residual.matches))
-        }
-        if residual.incomplete {
-            warnings.append(.residualScanIncomplete)
+        // 11. Residual old-path references — skipped for a copy: the source path still exists,
+        //     so references to it in the duplicate are not broken.
+        if !copyOnly {
+            emit(.scanningResidualPaths)
+            let residual = residualScanner.scan(root: destination, forPath: source.path)
+            if !residual.matches.isEmpty {
+                warnings.append(.residualPathReferences(files: residual.matches))
+            }
+            if residual.incomplete {
+                warnings.append(.residualScanIncomplete)
+            }
         }
 
         // 12. Broken / cross-project symlinks.

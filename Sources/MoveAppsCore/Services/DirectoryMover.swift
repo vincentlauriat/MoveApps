@@ -31,7 +31,11 @@ public struct DirectoryMover: Sendable {
         self.alwaysUseCopier = alwaysUseCopier
     }
 
-    public func move(from source: URL, to destination: URL) async -> Outcome {
+    /// Moves (or, with `copyOnly`, duplicates) `source` to `destination`. `copyOnly` skips the
+    /// native rename outright — a rename would remove the source, which a shared resource must
+    /// keep — and reports `.copiedPendingDeletion` like any fallback copy; the pipeline is the
+    /// one that decides never to delete a copy-only source.
+    public func move(from source: URL, to destination: URL, copyOnly: Bool = false) async -> Outcome {
         // Never overwrite an existing destination.
         if fileManager.fileExists(atPath: destination.path) {
             return .failed(reason: "destination already exists: \(destination.path)")
@@ -41,7 +45,7 @@ public struct DirectoryMover: Sendable {
             withIntermediateDirectories: true
         )
 
-        if !alwaysUseCopier {
+        if !alwaysUseCopier && !copyOnly {
             do {
                 try fileManager.moveItem(at: source, to: destination)
                 return .renamed

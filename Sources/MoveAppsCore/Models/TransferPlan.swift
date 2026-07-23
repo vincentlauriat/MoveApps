@@ -31,6 +31,11 @@ public struct TransferPlan: Sendable, Identifiable, Hashable {
         self.destinationContainer = destinationContainer
     }
 
+    /// Whether this transfer copies instead of moves: a shared resource folder (see
+    /// `SharedResourceFolder`) is duplicated to the destination root — the source stays in place,
+    /// no checkout lock is taken and the source is never deleted.
+    public var isCopyOnly: Bool { SharedResourceFolder.isShared(project) }
+
     /// Whether `name` is a safe single-level destination folder name. Rejects anything that could
     /// escape the destination root once fed to `appendingPathComponent` + `createDirectory`:
     /// an empty (after trim) name, a path separator (`../foo`, `a/b`, `/etc`), or the `.`/`..`

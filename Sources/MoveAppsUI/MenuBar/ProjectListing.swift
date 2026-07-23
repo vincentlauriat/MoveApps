@@ -65,6 +65,7 @@ public enum ProjectListing {
             switch strategy {
             case .rename: return "Déplacement…"
             case .dittoFallback: return "Copie (ditto)…"
+            case .copy: return "Copie (source conservée)…"
             }
         case .recreatingVenv(let venv): return "Recréation du venv \(venv.lastPathComponent)…"
         case .reinstallingNodeModules: return "Réinstallation de node_modules…"

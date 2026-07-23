@@ -115,6 +115,42 @@ struct TransferPipelineTests {
         #expect(!FileManager.default.fileExists(atPath: escaped.path))
     }
 
+    // MARK: - Shared resource copy (Templates)
+
+    @Test("a shared resource folder is copied: source preserved, no checkout marker, result ok")
+    func sharedResourceIsCopiedNotMoved() async {
+        let tmp = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let fm = FileManager.default
+        let archiveRoot = tmp.appendingPathComponent("archive")
+        let activeRoot = tmp.appendingPathComponent("active")
+        try? fm.createDirectory(at: activeRoot, withIntermediateDirectories: true)
+
+        let source = archiveRoot.appendingPathComponent("Templates")
+        Fixture.write("#!/bin/zsh\n", to: source.appendingPathComponent("Scripts/release-full.sh"))
+        Fixture.write("skeleton\n", to: source.appendingPathComponent("AppKitTemplate/project.yml"))
+
+        let plan = TransferPlan(
+            project: ProjectCandidate(name: "Templates", path: source),
+            from: .archive,
+            to: .active
+        )
+        #expect(plan.isCopyOnly)
+
+        let pipeline = TransferPipeline(roots: RootLocations(active: activeRoot, archive: archiveRoot))
+        let result = await pipeline.finalResult(for: plan)
+
+        #expect(result?.status == .ok)
+        #expect(result?.sourceDeleted == false)
+        // Both roots now hold the full tree.
+        let destination = activeRoot.appendingPathComponent("Templates")
+        #expect(fm.fileExists(atPath: destination.appendingPathComponent("Scripts/release-full.sh").path))
+        #expect(fm.fileExists(atPath: destination.appendingPathComponent("AppKitTemplate/project.yml").path))
+        #expect(fm.fileExists(atPath: source.appendingPathComponent("Scripts/release-full.sh").path))
+        // No checkout marker was left at the source: a copy is not a "take".
+        #expect(CheckoutReferenceStore().read(at: source) == nil)
+    }
+
     // MARK: - Happy path
 
     @Test("happy path: native rename yields ok and removes the source")

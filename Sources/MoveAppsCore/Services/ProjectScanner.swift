@@ -46,6 +46,13 @@ public struct ProjectScanner: Sendable {
                 continue
             }
 
+            // A shared resource folder (e.g. `Templates`) is one transferable unit: never
+            // decomposed into its children, and transferred by copy (see `SharedResourceFolder`).
+            if SharedResourceFolder.isSharedName(entry.lastPathComponent) {
+                result.append(makeCandidate(entry))
+                continue
+            }
+
             if detector.isProjectRoot(at: entry) {
                 result.append(makeCandidate(entry))
                 continue
@@ -93,7 +100,12 @@ public struct ProjectScanner: Sendable {
         ) else { return [] }
 
         return entries
-            .filter { isDirectory($0) && checkoutStore.read(at: $0) == nil && !detector.isProjectRoot(at: $0) }
+            .filter {
+                isDirectory($0)
+                    && checkoutStore.read(at: $0) == nil
+                    && !detector.isProjectRoot(at: $0)
+                    && !SharedResourceFolder.isSharedName($0.lastPathComponent)
+            }
             .map { $0.lastPathComponent }
             .sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }

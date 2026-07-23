@@ -28,7 +28,7 @@ struct TransferPlanView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Confirmer le transfert")
+            Text(plan.isCopyOnly ? "Confirmer la copie" : "Confirmer le transfert")
                 .font(.system(.title3, design: .rounded, weight: .bold))
 
             VStack(alignment: .leading, spacing: 8) {
@@ -43,6 +43,15 @@ struct TransferPlanView: View {
                 .foregroundStyle(.secondary)
 
                 StackTagRow(tags: sortedTags)
+
+                if plan.isCopyOnly {
+                    Label(
+                        "Ressource partagée : ce dossier sera copié, l'original reste en place (aucune prise).",
+                        systemImage: "doc.on.doc"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -51,7 +60,10 @@ struct TransferPlanView: View {
             destinationPicker
 
             VStack(alignment: .leading, spacing: 10) {
-                Toggle("Conserver un lien de compatibilité", isOn: $keepSymlink)
+                // A compatibility symlink is impossible for a copy: the source path stays occupied.
+                if !plan.isCopyOnly {
+                    Toggle("Conserver un lien de compatibilité", isOn: $keepSymlink)
+                }
                 Toggle("Réinstaller node_modules", isOn: $reinstallNode)
             }
             .toggleStyle(.switch)

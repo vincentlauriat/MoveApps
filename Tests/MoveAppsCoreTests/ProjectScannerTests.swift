@@ -114,4 +114,34 @@ struct ProjectScannerTests {
         #expect(candidates.contains { $0.name == "RealOne" && $0.checkoutReference == nil })
         #expect(!candidates.contains { $0.name == "Outils" })
     }
+
+    @Test("a root-level Templates folder is one shared-resource unit, not a decomposed container")
+    func surfacesSharedResourceFolderAsSingleUnit() {
+        let root = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let fm = FileManager.default
+
+        // Children that would normally be unpacked (one even looks like a project of its own).
+        try? fm.createDirectory(
+            at: root.appendingPathComponent("Templates/AppKitTemplate/.git"), withIntermediateDirectories: true
+        )
+        Fixture.write("#!/bin/zsh\n", to: root.appendingPathComponent("Templates/Scripts/release-full.sh"))
+        // A genuine container folder, for contrast.
+        try? fm.createDirectory(
+            at: root.appendingPathComponent("Outils/RealOne/.git"), withIntermediateDirectories: true
+        )
+
+        let scanner = ProjectScanner()
+        let candidates = scanner.scan(root)
+        let names = Set(candidates.map(\.name))
+
+        #expect(names.contains("Templates"))
+        #expect(!names.contains("AppKitTemplate"))
+        #expect(!names.contains("Scripts"))
+        let templates = candidates.first { $0.name == "Templates" }
+        #expect(templates?.containerName == nil)
+
+        // Not offered as a destination category folder either.
+        #expect(scanner.containerFolders(in: root) == ["Outils"])
+    }
 }

@@ -7,6 +7,8 @@ public enum MoveStrategy: Sendable, Hashable {
     /// Copy-then-delete fallback via `ditto`, used when the native rename fails
     /// (typically an iCloud FileProvider timeout).
     case dittoFallback
+    /// Pure copy for a shared resource folder — the source is intentionally left in place.
+    case copy
 }
 
 /// Progressive step emitted by `TransferPipeline.run` as an `AsyncStream`.

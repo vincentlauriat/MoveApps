@@ -697,10 +697,10 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F69FDE8AB1C85BF30C6A2D2F /* MoveApps */,
 				0A9C11BA54C3026262629832 /* MoveAppsCore */,
-				C042D0101ED3DA27BE3B37CE /* MoveAppsCoreTests */,
 				D52BA63A931EA53DE047E0BF /* MoveAppsUI */,
+				F69FDE8AB1C85BF30C6A2D2F /* MoveApps */,
+				C042D0101ED3DA27BE3B37CE /* MoveAppsCoreTests */,
 			);
 		};
 /* End PBXProject section */
@@ -1035,13 +1035,13 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				INFOPLIST_FILE = Sources/MoveApps/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vincent.MoveApps;
 				PRODUCT_NAME = MoveApps;
 				SDKROOT = macosx;
@@ -1115,13 +1115,13 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				INFOPLIST_FILE = Sources/MoveApps/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.vincent.MoveApps;
 				PRODUCT_NAME = MoveApps;
 				SDKROOT = macosx;

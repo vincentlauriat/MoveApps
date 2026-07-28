@@ -58,7 +58,7 @@ public enum ProjectListing {
     public static func describe(_ step: TransferStep) -> String {
         switch step {
         case .detectingStack: return "Détection de la stack…"
-        case .materializingICloud(let remaining): return "Matérialisation iCloud (\(remaining) restants)…"
+        case .materializingICloud(let progress): return describe(progress)
         case .capturingVenvState(let venv): return "Capture du venv \(venv.lastPathComponent)…"
         case .snapshottingGitBefore: return "Instantané git (avant)…"
         case .moving(let strategy):
@@ -82,6 +82,40 @@ public enum ProjectListing {
             case .failed: return "Échec : \(result.failureReason ?? "raison inconnue")"
             }
         }
+    }
+
+    /// The iCloud download stage in words. Says how many of how many have come down, how long it's
+    /// been going and how long it may still go — a bare "N restants", repeated every two seconds
+    /// with the same N, tells you neither whether it's progressing nor when it will stop.
+    public static func describe(_ progress: MaterializationProgress) -> String {
+        let elapsed = seconds(progress.elapsed)
+        guard progress.total > 0 else {
+            return "iCloud : aucun fichier à télécharger"
+        }
+        guard progress.isFinal else {
+            return "Téléchargement iCloud : \(progress.downloaded)/\(progress.total) fichiers récupérés — "
+                + "\(elapsed) s (\(seconds(progress.limit)) s max)"
+        }
+        if progress.remaining == 0 {
+            return "Téléchargement iCloud terminé : \(progress.total) fichiers récupérés en \(elapsed) s"
+        }
+        // Deliberately says only what is known — how many didn't arrive in the time allowed. Why
+        // they didn't (offline, paused, a slow large file) isn't something the pending count can
+        // tell us, and guessing here would send anyone reading the log after the wrong thing.
+        return "Téléchargement iCloud incomplet : \(progress.remaining) fichiers sur \(progress.total) "
+            + "non récupérés après \(elapsed) s — le transfert continue"
+    }
+
+    /// How a materialization report should be coloured in the debug log: a stage that ends with
+    /// files still missing is worth noticing, everything else is routine.
+    public static func kind(_ progress: MaterializationProgress) -> DebugLogEntry.Kind {
+        guard progress.isFinal else { return .info }
+        if progress.total == 0 { return .info }
+        return progress.remaining == 0 ? .success : .warning
+    }
+
+    private static func seconds(_ duration: Duration) -> Int {
+        Int(duration.components.seconds)
     }
 
     /// A French description of a transfer warning, shared by the history view and the debug log.

@@ -11,14 +11,25 @@ public struct DebugLogEntry: Identifiable, Sendable {
     }
 
     public let id = UUID()
-    public let timestamp: Date
-    public let text: String
-    public let kind: Kind
+    public var timestamp: Date
+    public var text: String
+    public var kind: Kind
 
-    public init(timestamp: Date, text: String, kind: Kind) {
+    /// Set on a line that reports the progress of one long-running stage. A new report with the
+    /// same key overwrites this line in place rather than adding another one — the id survives, so
+    /// the row updates instead of being torn down and rebuilt. `nil` for ordinary lines.
+    ///
+    /// Coalescing only ever applies to the line *immediately* at the bottom: any other line logged
+    /// in between ends the group, and the next report starts a fresh line. That holds today because
+    /// nothing else logs while a materialization stage polls — a future stage that logs
+    /// concurrently would quietly get one line per report again.
+    public let coalescingKey: String?
+
+    public init(timestamp: Date, text: String, kind: Kind, coalescingKey: String? = nil) {
         self.timestamp = timestamp
         self.text = text
         self.kind = kind
+        self.coalescingKey = coalescingKey
     }
 }
 
@@ -43,8 +54,28 @@ public final class DebugLogStore {
         self.fileWriter = fileWriter
     }
 
-    public func log(_ text: String, kind: DebugLogEntry.Kind = .info) {
-        let entry = DebugLogEntry(timestamp: Date(), text: text, kind: kind)
+    /// Appends a line — or, when `coalescingKey` matches the line already at the bottom, rewrites
+    /// that line in place. A stage that polls every couple of seconds (iCloud downloads, typically)
+    /// therefore occupies one line that keeps counting up, instead of thirty near-identical ones.
+    public func log(_ text: String, kind: DebugLogEntry.Kind = .info, coalescingKey: String? = nil) {
+        let now = Date()
+
+        if let coalescingKey, let last = entries.indices.last,
+           entries[last].coalescingKey == coalescingKey {
+            entries[last].timestamp = now
+            entries[last].text = text
+            entries[last].kind = kind
+            // Routine progress updates stay out of the file, which can't rewrite a line and would
+            // otherwise collect exactly the repetition being coalesced away here. Anything that
+            // isn't routine — the stage settling on success, or on files that never arrived — is
+            // worth a line of its own in the journal.
+            if kind != .info {
+                fileWriter?.enqueue(timestamp: now, kind: kind, text: text)
+            }
+            return
+        }
+
+        let entry = DebugLogEntry(timestamp: now, text: text, kind: kind, coalescingKey: coalescingKey)
         entries.append(entry)
         if entries.count > maxEntries {
             entries.removeFirst(entries.count - maxEntries)

@@ -14,7 +14,7 @@ public enum MoveStrategy: Sendable, Hashable {
 /// Progressive step emitted by `TransferPipeline.run` as an `AsyncStream`.
 public enum TransferStep: Sendable {
     case detectingStack
-    case materializingICloud(remaining: Int)
+    case materializingICloud(MaterializationProgress)
     case capturingVenvState(venv: URL)
     case snapshottingGitBefore
     case moving(strategy: MoveStrategy)

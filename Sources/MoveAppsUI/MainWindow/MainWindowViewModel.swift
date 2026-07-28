@@ -425,6 +425,16 @@ public final class MainWindowViewModel {
     /// distinctly, and a finished transfer's warnings are each broken out onto their own line so
     /// they're visible without expanding the history sheet.
     private func logStep(_ step: TransferStep) {
+        // The iCloud stage reports every couple of seconds for up to a minute: it gets one line
+        // that rewrites itself, coloured once it settles, rather than one line per poll.
+        if case .materializingICloud(let progress) = step {
+            debugLog.log(
+                ProjectListing.describe(progress),
+                kind: ProjectListing.kind(progress),
+                coalescingKey: "icloud-materialization"
+            )
+            return
+        }
         guard case .finished(let result) = step else {
             debugLog.log(ProjectListing.describe(step))
             return

@@ -18,6 +18,11 @@ public struct DebugLogEntry: Identifiable, Sendable {
     /// Set on a line that reports the progress of one long-running stage. A new report with the
     /// same key overwrites this line in place rather than adding another one — the id survives, so
     /// the row updates instead of being torn down and rebuilt. `nil` for ordinary lines.
+    ///
+    /// Coalescing only ever applies to the line *immediately* at the bottom: any other line logged
+    /// in between ends the group, and the next report starts a fresh line. That holds today because
+    /// nothing else logs while a materialization stage polls — a future stage that logs
+    /// concurrently would quietly get one line per report again.
     public let coalescingKey: String?
 
     public init(timestamp: Date, text: String, kind: Kind, coalescingKey: String? = nil) {

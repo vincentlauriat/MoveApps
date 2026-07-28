@@ -107,19 +107,23 @@ public final class MainWindowViewModel {
         let cache = sizeCache
         Task {
             var toMeasure: [URL] = []
+            var cached: [URL: Int64] = [:]
             for path in targets {
-                if let cached = await cache.size(for: path) {
-                    self.applySize(cached, to: path)
+                if let size = await cache.size(for: path) {
+                    cached[path] = size
                 } else {
                     toMeasure.append(path)
                 }
             }
+            self.applySizes(cached)
+
             let diskUsage = DiskUsage()
             let chunkSize = 6
             var index = 0
             while index < toMeasure.count {
                 let chunk = Array(toMeasure[index..<min(index + chunkSize, toMeasure.count)])
                 index += chunkSize
+                var measured: [URL: Int64] = [:]
                 await withTaskGroup(of: (URL, Int64?).self) { group in
                     for path in chunk {
                         group.addTask { (path, await diskUsage.sizeBytes(of: path)) }
@@ -127,27 +131,39 @@ public final class MainWindowViewModel {
                     for await (path, size) in group {
                         guard let size else { continue }
                         await cache.store(size, for: path)
-                        self.applySize(size, to: path)
+                        measured[path] = size
                     }
                 }
+                self.applySizes(measured)
             }
         }
     }
 
-    /// Replaces the visible size of a single project row, matched by its stable path. A no-op if the
-    /// project has since scrolled out of the current scan (a newer refresh replaced the list).
-    private func applySize(_ bytes: Int64, to path: URL) {
-        guard let idx = projects.firstIndex(where: { $0.candidate.path == path }) else { return }
-        let current = projects[idx].candidate
-        projects[idx].candidate = ProjectCandidate(
-            id: current.id,
-            name: current.name,
-            path: current.path,
-            stackTags: current.stackTags,
-            sizeBytes: bytes,
-            containerName: current.containerName,
-            checkoutReference: current.checkoutReference
-        )
+    /// Writes a batch of freshly measured sizes into the visible rows in one shot. Applied as a
+    /// single mutation of `projects` on purpose: one size at a time would publish one observable
+    /// change per project, re-running (and re-sorting, re-grouping) both columns' bodies a hundred
+    /// times over during a single scan. Paths no longer in the current scan are ignored — a newer
+    /// refresh has already replaced the list.
+    private func applySizes(_ sizes: [URL: Int64]) {
+        guard !sizes.isEmpty else { return }
+        var updated = projects
+        var changed = false
+        for index in updated.indices {
+            guard let bytes = sizes[updated[index].candidate.path] else { continue }
+            let current = updated[index].candidate
+            updated[index].candidate = ProjectCandidate(
+                id: current.id,
+                name: current.name,
+                path: current.path,
+                stackTags: current.stackTags,
+                sizeBytes: bytes,
+                containerName: current.containerName,
+                checkoutReference: current.checkoutReference
+            )
+            changed = true
+        }
+        guard changed else { return }
+        projects = updated
     }
 
     /// Clears a checkout marker (the "Libérer" action): removes only the local trace of the
@@ -198,6 +214,24 @@ public final class MainWindowViewModel {
 
     public func isSelected(_ project: QuickProject) -> Bool {
         selection.contains(project.id)
+    }
+
+    /// The part of the selection belonging to one column's list. Empty for the other column, since a
+    /// selection never spans both roots — that's what keeps the two lists' own selections in sync
+    /// with the single selection the batch bar acts on.
+    public func selection(in root: RootKind) -> Set<URL> {
+        guard selectionRoot == root else { return [] }
+        return selection
+    }
+
+    /// Adopts a selection made directly in one column's list, dropping anything that can't be part
+    /// of a batch (a checked-out project) and replacing whatever the other column had selected — a
+    /// batch only ever moves one way.
+    public func setSelection(_ ids: Set<URL>, in root: RootKind) {
+        let selectable = projects.lazy
+            .filter { $0.root == root && $0.candidate.checkoutReference == nil }
+            .map(\.id)
+        selection = ids.intersection(Set(selectable))
     }
 
     /// Toggles a project's checkbox. Since a batch only moves one direction, checking a project

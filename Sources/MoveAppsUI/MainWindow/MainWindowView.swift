@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import UniformTypeIdentifiers
 import MoveAppsCore
 
@@ -391,6 +392,11 @@ public struct MainWindowView: View {
 
 /// One column of the main window, listing the projects under a single root and accepting a
 /// project dragged from the opposite root.
+///
+/// A plain system `List`: level-1 folders are real `DisclosureGroup`s with the native chevron and
+/// rows carry no decoration of their own, so the hierarchy reads the way it does in the Finder
+/// instead of being faked with indentation between floating glass cards. Selection is the list's
+/// own — ⌘/⇧-click picks several rows at once — which replaces the per-row checkboxes.
 struct RootColumnView: View {
     @Environment(MainWindowViewModel.self) private var model
 
@@ -399,51 +405,33 @@ struct RootColumnView: View {
 
     @State private var isTargeted = false
 
+    /// Folders the user has explicitly closed. Tracking the closed ones (rather than the open ones)
+    /// keeps every folder — including any that appears after a rescan — open by default.
+    @State private var collapsed: Set<String> = []
+
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        // Read here, not inside the binding's getter: `@Observable` records a dependency on what a
+        // body actually reads while it evaluates, and the getter runs later — outside that scope.
+        // Reading it in-line is what makes this column redraw when the other column takes over the
+        // selection.
+        let selected = model.selection(in: root)
+
+        return VStack(alignment: .leading, spacing: 8) {
             header
 
-            ScrollView {
-                GlassEffectContainer(spacing: 8) {
-                    LazyVStack(alignment: .leading, spacing: 8) {
-                        let groups = projectGroups(filtered(model.projects(for: root)))
-                        if groups.isEmpty {
-                            emptyState
-                        } else {
-                            ForEach(Array(groups.enumerated()), id: \.element.id) { index, group in
-                                // Level-1 folder: a header, then its (level-2) projects indented under it.
-                                if let container = group.container {
-                                    FolderHeaderView(
-                                        name: container,
-                                        total: group.projects.count,
-                                        selectedCount: model.selectedCount(in: group.projects),
-                                        disabled: model.isRunning,
-                                        onToggle: { model.toggleFolderSelection(group.projects) }
-                                    )
-                                    .padding(.top, index == 0 ? 0 : 8)
-                                    .padding(.horizontal, 4)
-                                }
-                                ForEach(group.projects) { project in
-                                    MainProjectRowView(
-                                        project: project,
-                                        disabled: model.isRunning,
-                                        isSelected: model.isSelected(project),
-                                        onToggleSelect: { model.toggleSelection(project) },
-                                        action: { model.prepareTransfer(project) },
-                                        onRelease: { model.releaseCheckout(project) }
-                                    )
-                                    .padding(.leading, group.container == nil ? 0 : 20)  // nest level-2
-                                    .draggable(DraggedProject(path: project.candidate.path, root: project.root))
-                                }
-                            }
-                        }
-                    }
-                }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 12)
+            let groups = projectGroups(filtered(model.projects(for: root)))
+            if groups.isEmpty {
+                emptyState
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                list(groups, selected: selected)
             }
         }
-        .padding(.vertical, 14)
+        .padding(.top, 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             if isTargeted {
@@ -467,26 +455,91 @@ struct RootColumnView: View {
         }
     }
 
+    /// The list proper. Loose projects and folders share one `ForEach` so they stay interleaved in a
+    /// single alphabetical order — the reason folders aren't `Section`s, which would push them into
+    /// their own blocks.
+    private func list(_ groups: [ProjectGroup], selected: Set<URL>) -> some View {
+        List(selection: selectionBinding(selected)) {
+            ForEach(groups) { group in
+                if let container = group.container {
+                    DisclosureGroup(isExpanded: expansion(for: container)) {
+                        ForEach(group.projects) { project in
+                            row(project)
+                        }
+                    } label: {
+                        FolderLabelView(
+                            name: container,
+                            total: group.projects.count,
+                            selectedCount: model.selectedCount(in: group.projects),
+                            disabled: model.isRunning,
+                            onSelectAll: { model.toggleFolderSelection(group.projects) }
+                        )
+                    }
+                } else if let project = group.projects.first {
+                    row(project)
+                }
+            }
+        }
+        .listStyle(.inset)
+        .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, 26)
+    }
+
+    private func row(_ project: QuickProject) -> some View {
+        MainProjectRowView(
+            project: project,
+            disabled: model.isRunning,
+            action: { model.prepareTransfer(project) },
+            onRelease: { model.releaseCheckout(project) }
+        )
+        .tag(project.id)
+        // A checked-out project can't be part of a batch, so the list itself refuses to select it —
+        // otherwise a ⇧-click across a range would highlight it and the view model would strip it
+        // back out, visibly fighting the user.
+        .selectionDisabled(project.candidate.checkoutReference != nil)
+        .draggable(DraggedProject(path: project.candidate.path, root: project.root))
+    }
+
+    /// Bridges the list's own selection to the view model, which keeps the invariant the list knows
+    /// nothing about: a batch only ever moves one way, so a selection is confined to a single root.
+    /// `current` is passed in (rather than read here) so the dependency is registered — see `body`.
+    private func selectionBinding(_ current: Set<URL>) -> Binding<Set<URL>> {
+        Binding(
+            get: { current },
+            set: { model.setSelection($0, in: root) }
+        )
+    }
+
+    /// Folders stay open unless closed by hand, and a search forces them all open so a match never
+    /// hides inside a collapsed folder.
+    private func expansion(for container: String) -> Binding<Bool> {
+        Binding(
+            get: { isSearching || !collapsed.contains(container) },
+            set: { isOpen in
+                if isOpen {
+                    collapsed.remove(container)
+                } else {
+                    collapsed.insert(container)
+                }
+            }
+        )
+    }
+
     @ViewBuilder
     private var emptyState: some View {
         if !model.isScanning && model.isAccessDenied(root) {
             accessDeniedState
+        } else if model.isScanning {
+            ProgressView("Analyse…")
+                .controlSize(.small)
+        } else if isSearching {
+            ContentUnavailableView.search(text: searchText)
         } else {
-            Text(emptyMessage)
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .padding(.vertical, 24)
-        }
-    }
-
-    private var emptyMessage: String {
-        if model.isScanning {
-            return "Analyse…"
-        } else if !searchText.trimmingCharacters(in: .whitespaces).isEmpty {
-            return "Aucun résultat"
-        } else {
-            return "Aucun projet"
+            ContentUnavailableView(
+                "Aucun projet",
+                systemImage: root == .archive ? "archivebox" : "bolt",
+                description: Text("Aucun projet détecté sous \(model.displayPath(for: root)).")
+            )
         }
     }
 
@@ -494,21 +547,14 @@ struct RootColumnView: View {
     /// Folders permission, not a truly empty root — so the user can act instead of mistaking it for
     /// "no projects".
     private var accessDeniedState: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "lock.slash")
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(.orange)
-            Text("Accès refusé à \(model.displayPath(for: root))")
-                .font(.system(.callout, weight: .semibold))
-                .multilineTextAlignment(.center)
-            Text("Autorisez l'accès dans Réglages Système › Confidentialité et sécurité › Fichiers et dossiers, puis rafraîchissez.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+        ContentUnavailableView {
+            Label("Accès refusé", systemImage: "lock.slash")
+        } description: {
+            Text("MoveApps ne peut pas lire \(model.displayPath(for: root)). Autorisez l'accès dans "
+                 + "Réglages Système › Confidentialité et sécurité › Fichiers et dossiers, puis rafraîchissez.")
+        } actions: {
+            Button("Rafraîchir") { model.refresh() }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 24)
     }
 
     /// Narrows the column to projects whose name matches the search field (all of them when empty).
@@ -537,14 +583,13 @@ struct RootColumnView: View {
     }
 }
 
-/// One project row in a column: a selection checkbox, name, stack tags, and an arrow that starts a
-/// single transfer toward the opposite root. Rendered as its own Liquid Glass card so it reads
-/// with real relief against the column behind it.
+/// One project row: name, stack icons, size, and — on hover — the arrow that starts a single
+/// transfer toward the opposite root. A plain list row with no background of its own, so the list's
+/// own selection highlight is what shows; double-clicking or the context menu does the same thing
+/// as the arrow, for people who don't hunt for the button.
 struct MainProjectRowView: View {
     let project: QuickProject
     let disabled: Bool
-    let isSelected: Bool
-    let onToggleSelect: () -> Void
     let action: () -> Void
     let onRelease: () -> Void
 
@@ -555,68 +600,66 @@ struct MainProjectRowView: View {
     private var isLocked: Bool { checkout != nil }
 
     var body: some View {
-        HStack(spacing: 10) {
-            Button(action: onToggleSelect) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 17))
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
-            }
-            .buttonStyle(.plain)
-            .disabled(disabled || isLocked)
-            .opacity(isLocked ? 0.35 : 1)
-            .help(isSelected ? "Désélectionner" : "Sélectionner")
-            .accessibilityLabel(isSelected ? "Désélectionner" : "Sélectionner")
+        HStack(spacing: 8) {
+            Image(systemName: isLocked ? "lock.fill" : "shippingbox")
+                .font(.system(size: 12))
+                .foregroundStyle(isLocked ? rootAccent(.archive) : .secondary)
+                .frame(width: 16)
 
-            VStack(alignment: .leading, spacing: 5) {
-                Text(project.candidate.name)
-                    .font(.system(.body, weight: .semibold))
-                    .lineLimit(1)
-                if let checkout {
-                    lockLine(checkout)
-                } else {
-                    StackTagRow(tags: sortedTags)
-                }
+            Text(project.candidate.name)
+                .lineLimit(1)
+                .truncationMode(.middle)
+
+            if let checkout {
+                lockLine(checkout)
+            } else {
+                StackTagIcons(tags: sortedTags)
             }
+
             Spacer(minLength: 8)
 
             Text(ByteFormat.string(project.candidate.sizeBytes))
-                .font(.system(.caption2, design: .monospaced))
+                .font(.caption)
+                .monospacedDigit()
                 .foregroundStyle(.secondary)
 
             if isLocked {
                 Button("Libérer") { confirmingRelease = true }
-                    .buttonStyle(.glass)
                     .controlSize(.small)
                     .disabled(disabled)
                     .help("Libérer la trace de prise de ce projet")
             } else {
                 Button(action: action) {
-                    Label("Transférer vers \(rootLabel(project.destination))", systemImage: "arrow.right")
-                        .labelStyle(.iconOnly)
-                        .font(.system(size: 12, weight: .bold))
-                        .frame(width: 28, height: 28)
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 11, weight: .bold))
                 }
-                .buttonStyle(.glassProminent)
-                .buttonBorderShape(.circle)
-                .tint(rootAccent(project.destination))
+                .buttonStyle(.borderless)
+                .foregroundStyle(rootAccent(project.destination))
+                // Faded rather than removed, so rows keep their width when the pointer moves away.
+                // Still focusable and still read by VoiceOver at zero opacity.
+                .opacity(isHovering ? 1 : 0)
                 .disabled(disabled)
                 .help("Transférer vers \(rootLabel(project.destination))")
                 .accessibilityLabel("Transférer vers \(rootLabel(project.destination))")
             }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .glassEffect(
-            glassStyle,
-            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
-        )
-        .opacity(isLocked ? 0.85 : 1)
-        .scaleEffect(isHovering ? 1.01 : 1)
-        .onHover { hovering in
-            guard !disabled, !isLocked else { return }
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
-                isHovering = hovering
+        .padding(.vertical, 3)
+        .contentShape(Rectangle())
+        .opacity(isLocked ? 0.7 : 1)
+        .onHover { isHovering = $0 }
+        // No double-click-to-transfer here on purpose: a tap gesture on a row sits in front of the
+        // table's own click handling and of `.draggable`, and would make ⌘/⇧-click selection mushy.
+        // The hover arrow and the context menu cover the same action without fighting the list.
+        .contextMenu {
+            Button("Transférer vers \(rootLabel(project.destination))") { action() }
+                .disabled(disabled || isLocked)
+            Button("Afficher dans le Finder") {
+                NSWorkspace.shared.activateFileViewerSelecting([project.candidate.path])
+            }
+            if isLocked {
+                Divider()
+                Button("Libérer la trace de prise…") { confirmingRelease = true }
+                    .disabled(disabled)
             }
         }
         .confirmationDialog(
@@ -632,24 +675,13 @@ struct MainProjectRowView: View {
         }
     }
 
-    private var glassStyle: Glass {
-        if isLocked {
-            return .regular.tint(rootAccent(.archive).opacity(0.14))
-        }
-        return isSelected ? .regular.tint(Color.accentColor.opacity(0.22)).interactive() : .regular.interactive()
-    }
-
-    /// The lock badge line shown in place of the stack tags on a checked-out row.
+    /// Who holds the project, shown inline after the name on a checked-out row.
     private func lockLine(_ checkout: CheckoutReference) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: "lock.fill")
-                .font(.system(size: 10, weight: .semibold))
-            Text("Pris par \(checkout.hostName) le \(Self.checkoutDate.string(from: checkout.takenAt))")
-                .font(.caption)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        .foregroundStyle(rootAccent(.archive))
+        Text("pris par \(checkout.hostName) le \(Self.checkoutDate.string(from: checkout.takenAt))")
+            .font(.caption)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .foregroundStyle(rootAccent(.archive))
     }
 
     private var sortedTags: [StackTag] {
@@ -709,51 +741,92 @@ private func projectGroups(_ projects: [QuickProject]) -> [ProjectGroup] {
     return groups.sorted { $0.sortKey.localizedCaseInsensitiveCompare($1.sortKey) == .orderedAscending }
 }
 
-/// A header marking a level-1 folder that groups the (level-2) project rows below it. Tapping it
-/// selects the whole folder for a batch transfer (or deselects it when already fully selected); a
-/// tri-state control shows none / some / all selected.
-private struct FolderHeaderView: View {
+/// The label of a level-1 folder's `DisclosureGroup`: folder icon, name, project count, and a
+/// select-all control that appears on hover (or from the context menu) — the list's own ⌘/⇧-click
+/// covers ad-hoc selections, this covers "the whole folder" in one gesture.
+private struct FolderLabelView: View {
     let name: String
     let total: Int
     let selectedCount: Int
     let disabled: Bool
-    let onToggle: () -> Void
+    let onSelectAll: () -> Void
+
+    @State private var isHovering = false
+
+    private var isFullySelected: Bool { total > 0 && selectedCount == total }
 
     private var selectionIcon: String {
         if selectedCount == 0 { return "circle" }
-        if selectedCount == total { return "checkmark.circle.fill" }
+        if isFullySelected { return "checkmark.circle.fill" }
         return "minus.circle.fill"
     }
 
+    private var helpText: String {
+        isFullySelected ? "Tout désélectionner dans \(name)" : "Sélectionner tout le dossier \(name)"
+    }
+
     var body: some View {
-        Button(action: onToggle) {
-            HStack(spacing: 6) {
+        HStack(spacing: 6) {
+            Image(systemName: "folder.fill")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .frame(width: 16)
+
+            Text(name)
+                .fontWeight(.medium)
+                .lineLimit(1)
+                .truncationMode(.middle)
+
+            Text("\(total)")
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.tertiary)
+
+            Spacer(minLength: 8)
+
+            Button(action: onSelectAll) {
                 Image(systemName: selectionIcon)
                     .font(.system(size: 12))
                     .foregroundStyle(selectedCount == 0 ? Color.secondary : Color.accentColor)
-                Text(name)
-                    .font(.system(.caption, weight: .bold))
-                    .kerning(0.4)
-                    .textCase(.uppercase)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Text("\(total)")
-                    .font(.system(.caption2, design: .monospaced))
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 1)
-                    .background(Capsule().fill(Color.secondary.opacity(0.15)))
-                Spacer(minLength: 0)
             }
-            .foregroundStyle(.secondary)
-            .contentShape(Rectangle())
+            .buttonStyle(.borderless)
+            .opacity(isHovering || selectedCount > 0 ? 1 : 0)
+            .disabled(disabled)
+            .help(helpText)
+            .accessibilityLabel(helpText)
         }
-        .buttonStyle(.plain)
-        .disabled(disabled)
-        .help(selectedCount == total && total > 0
-              ? "Tout désélectionner dans \(name)"
-              : "Sélectionner tout le dossier \(name)")
-        .padding(.horizontal, 8)
-        .padding(.vertical, 2)
+        .padding(.vertical, 3)
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
+        .contextMenu {
+            Button(isFullySelected ? "Tout désélectionner" : "Sélectionner tout le dossier") {
+                onSelectAll()
+            }
+            .disabled(disabled)
+        }
+        // Children left un-merged on purpose: combining them would fold the select-all button into
+        // one static element and put the action out of VoiceOver's reach.
         .accessibilityLabel("Dossier \(name), \(total) projet\(total == 1 ? "" : "s"), \(selectedCount) sélectionné\(selectedCount == 1 ? "" : "s")")
+    }
+}
+
+/// The compact stack indicator used in list rows: just the technology icons, tinted, with the
+/// names in the tooltip. The full labelled badges (`StackTagRow`) stay in the transfer sheet, where
+/// there's room for them and only one project is on screen.
+private struct StackTagIcons: View {
+    let tags: [StackTag]
+
+    var body: some View {
+        if !tags.isEmpty {
+            HStack(spacing: 3) {
+                ForEach(tags, id: \.self) { tag in
+                    Image(systemName: tag.icon)
+                        .font(.system(size: 9))
+                        .foregroundStyle(tag.tint)
+                }
+            }
+            .help(tags.map(\.rawValue).joined(separator: ", "))
+            .accessibilityLabel("Technologies : " + tags.map(\.rawValue).joined(separator: ", "))
+        }
     }
 }

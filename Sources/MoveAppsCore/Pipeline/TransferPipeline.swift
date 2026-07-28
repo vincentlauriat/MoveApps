@@ -123,8 +123,8 @@ public actor TransferPipeline {
         _ = stackDetector.detect(at: source)
 
         // 2. iCloud materialization (bounded).
-        await materializer.materialize(at: source) { remaining in
-            emit(.materializingICloud(remaining: remaining))
+        await materializer.materialize(at: source) { progress in
+            emit(.materializingICloud(progress))
         }
 
         // 3. Capture venv state before the move (absolute paths still valid).

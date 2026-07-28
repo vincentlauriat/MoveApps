@@ -113,9 +113,15 @@ actor StubInitScriptRunner: InitScriptRunning {
 struct NeverResolvingMaterializer: ICloudMaterializing {
     let attempts: Int
 
-    func materialize(at directory: URL, onProgress: @Sendable (Int) -> Void) async {
-        for _ in 0..<attempts {
-            onProgress(1)
+    func materialize(at directory: URL, onProgress: @Sendable (MaterializationProgress) -> Void) async {
+        for attempt in 1...max(1, attempts) {
+            onProgress(MaterializationProgress(
+                remaining: 1,
+                total: 1,
+                elapsed: .seconds(attempt),
+                limit: .seconds(attempts),
+                isFinal: attempt == attempts
+            ))
         }
     }
 }
@@ -123,15 +129,18 @@ struct NeverResolvingMaterializer: ICloudMaterializing {
 /// Thread-safe recorder for progress callbacks fired from `@Sendable` closures.
 final class ProgressLog: @unchecked Sendable {
     private let lock = NSLock()
-    private var storage: [Int] = []
+    private var storage: [MaterializationProgress] = []
 
-    func record(_ value: Int) {
+    func record(_ value: MaterializationProgress) {
         lock.lock(); storage.append(value); lock.unlock()
     }
 
-    var values: [Int] {
+    var reports: [MaterializationProgress] {
         lock.lock(); defer { lock.unlock() }; return storage
     }
+
+    /// Just the remaining counts, in order.
+    var values: [Int] { reports.map(\.remaining) }
 }
 
 // MARK: - Pipeline helpers

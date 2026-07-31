@@ -51,6 +51,15 @@ struct MoveAppsApp: App {
         } label: {
             // Transfers only run from the main window now, so the icon reflects its state.
             MenuBarIconView(isBusy: mainWindow.isRunning)
+                // The menu bar label renders at launch regardless of activation policy, unlike
+                // Window("main")'s content — which for an LSUIElement app never appears on its own
+                // and so never runs its own .onAppear. Wiring the bridge closures here instead means
+                // a Dock-icon reopen works on the very first click, before the main window has ever
+                // been shown.
+                .onAppear {
+                    appDelegate.openMainWindow = { openWindow(id: "main") }
+                    appDelegate.isTransferRunning = { mainWindow.isRunning }
+                }
         }
         .menuBarExtraStyle(.window)
 
@@ -60,10 +69,6 @@ struct MoveAppsApp: App {
                 .environment(mainWindow)
                 .environment(dashboard)
                 .environment(debugLog)
-                .onAppear {
-                    appDelegate.openMainWindow = { openWindow(id: "main") }
-                    appDelegate.isTransferRunning = { mainWindow.isRunning }
-                }
         }
         .commands {
             CommandGroup(after: .appInfo) {

@@ -46,4 +46,58 @@ struct DirectoryMoverTests {
 
         #expect(outcome == .copiedPendingDeletion(missingPaths: []))
     }
+
+    /// The BmadBrowser incident: a source tree containing a stale `.git/fsmonitor--daemon.ipc`
+    /// UNIX socket (left behind whenever `core.fsmonitor` has ever run) made real `ditto` exit
+    /// non-zero even though it copied every other file — the old exit-code gate turned a fully
+    /// successful transfer into a hard failure, and the pipeline never cleaned up the resulting
+    /// destination directory, so every retry then also failed on "destination already exists".
+    /// Exercises the *real* `DittoCopier` (not the fault-injecting fake) so the fix is proven
+    /// against actual `ditto` behavior, not an assumption about it.
+    @Test("copy tolerates a source containing a UNIX socket ditto cannot duplicate")
+    func toleratesUncopyableSocketFile() async {
+        let tmp = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let source = tmp.appendingPathComponent("project")
+        Fixture.write("a\n", to: source.appendingPathComponent("a.txt"))
+        Fixture.write("b\n", to: source.appendingPathComponent("sub/b.txt"))
+        Fixture.makeUnixSocket(at: source.appendingPathComponent(".git/fsmonitor--daemon.ipc"))
+
+        let destination = tmp.appendingPathComponent("copy")
+        let mover = DirectoryMover(copier: DittoCopier(), alwaysUseCopier: true)
+        let outcome = await mover.move(from: source, to: destination)
+
+        #expect(outcome == .copiedPendingDeletion(missingPaths: []))
+        #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent("a.txt").path))
+        #expect(FileManager.default.fileExists(atPath: destination.appendingPathComponent("sub/b.txt").path))
+        // The source is still present — deletion is the pipeline's call, not the mover's.
+        #expect(FileManager.default.fileExists(atPath: source.appendingPathComponent("a.txt").path))
+    }
+
+    /// A real, substantive copy failure (not just an uncopyable special file) must leave no
+    /// partial destination behind — otherwise a retry immediately trips "destination already
+    /// exists" with no way to recover, which is exactly how the BmadBrowser transfer got stuck.
+    @Test("failed copy cleans up the partial destination it created")
+    func cleansUpPartialDestinationOnFailure() async {
+        let tmp = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let source = tmp.appendingPathComponent("project")
+        Fixture.write("a\n", to: source.appendingPathComponent("a.txt"))
+        Fixture.write("b\n", to: source.appendingPathComponent("sub/b.txt"))
+
+        let destination = tmp.appendingPathComponent("copy")
+        let mover = DirectoryMover(
+            copier: FaultInjectingCopier(drop: "sub/b.txt", compensateCount: false),
+            alwaysUseCopier: true
+        )
+        let outcome = await mover.move(from: source, to: destination)
+
+        guard case .failed = outcome else {
+            Issue.record("expected .failed, got \(outcome)")
+            return
+        }
+        #expect(!FileManager.default.fileExists(atPath: destination.path))
+    }
 }

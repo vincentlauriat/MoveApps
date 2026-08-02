@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 @testable import MoveAppsCore
 
@@ -28,6 +29,40 @@ enum Fixture {
         process.waitUntilExit()
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         return String(decoding: data, as: UTF8.self)
+    }
+
+    /// Creates a real UNIX domain socket special file at `url` — the same file type `ditto`
+    /// cannot duplicate, reproducing a stale `.git/fsmonitor--daemon.ipc` left behind by
+    /// `core.fsmonitor`. `bind(2)` enforces a ~104-byte `sun_path` limit that the deep `/var/
+    /// folders/.../moveapps-tests-<uuid>/...` fixture path would blow past, so the socket is
+    /// bound at a short path under `/tmp` first, then moved into place with `rename`, which has
+    /// no such limit.
+    static func makeUnixSocket(at url: URL) {
+        let fm = FileManager.default
+        try? fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let shortPath = "/tmp/moveapps-test-sock-\(UUID().uuidString.prefix(8))"
+        let fd = socket(AF_UNIX, SOCK_STREAM, 0)
+        precondition(fd >= 0, "socket() failed: \(String(cString: strerror(errno)))")
+        defer { close(fd) }
+
+        var addr = sockaddr_un()
+        addr.sun_family = sa_family_t(AF_UNIX)
+        let sunPathCapacity = MemoryLayout.size(ofValue: addr.sun_path)
+        withUnsafeMutableBytes(of: &addr.sun_path) { rawPath in
+            let dest = rawPath.bindMemory(to: CChar.self)
+            _ = shortPath.withCString { src in
+                strncpy(dest.baseAddress, src, sunPathCapacity - 1)
+            }
+        }
+        let bindResult = withUnsafePointer(to: &addr) { addrPtr in
+            addrPtr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sockPtr in
+                bind(fd, sockPtr, socklen_t(MemoryLayout<sockaddr_un>.size))
+            }
+        }
+        precondition(bindResult == 0, "bind() failed: \(String(cString: strerror(errno)))")
+
+        try? fm.removeItem(atPath: url.path)
+        try? fm.moveItem(atPath: shortPath, toPath: url.path)
     }
 
     /// Creates a git repo with the given files, committed on a clean tree.

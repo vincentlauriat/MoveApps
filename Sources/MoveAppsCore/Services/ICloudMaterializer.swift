@@ -69,8 +69,8 @@ public actor FileProviderMaterializer: ICloudMaterializing {
         }
         report(remaining: total, isFinal: false)
 
-        for stub in stubs(under: directory) {
-            try? fileManager.startDownloadingUbiquitousItem(at: stub)
+        for item in notDownloadedItems(under: directory) {
+            try? fileManager.startDownloadingUbiquitousItem(at: item)
         }
 
         var attempt = 0
@@ -86,29 +86,33 @@ public actor FileProviderMaterializer: ICloudMaterializing {
         }
     }
 
-    /// URLs of `.icloud` stub files under `directory`.
-    private func stubs(under directory: URL) -> [URL] {
-        guard let enumerator = fileManager.enumerator(at: directory, includingPropertiesForKeys: nil) else { return [] }
+    /// URLs of items under `directory` not yet materialized locally: `.icloud` stub files
+    /// (dematerialized before any download starts, so they carry no downloading-status key of
+    /// their own) plus any item whose `ubiquitousItemDownloadingStatusKey` reports
+    /// `.notDownloaded` — the common case for dataless APFS placeholders under "Optimize Mac
+    /// Storage", which do **not** carry the `.icloud` extension. Missing this second group used
+    /// to mean `startDownloadingUbiquitousItem` was never called on them, so the stage spent its
+    /// whole budget polling files it had never actually asked iCloud to fetch.
+    private func notDownloadedItems(under directory: URL) -> [URL] {
+        guard let enumerator = fileManager.enumerator(
+            at: directory,
+            includingPropertiesForKeys: [.ubiquitousItemDownloadingStatusKey]
+        ) else { return [] }
         var result: [URL] = []
-        for case let url as URL in enumerator where url.pathExtension == "icloud" {
-            result.append(url)
+        for case let url as URL in enumerator {
+            if url.pathExtension == "icloud" {
+                result.append(url)
+                continue
+            }
+            if let status = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey])
+                .ubiquitousItemDownloadingStatus, status == .notDownloaded {
+                result.append(url)
+            }
         }
         return result
     }
 
     private func pendingCount(under directory: URL) -> Int {
-        var count = stubs(under: directory).count
-        guard let enumerator = fileManager.enumerator(
-            at: directory,
-            includingPropertiesForKeys: [.ubiquitousItemDownloadingStatusKey]
-        ) else { return count }
-        for case let url as URL in enumerator {
-            guard let status = try? url.resourceValues(forKeys: [.ubiquitousItemDownloadingStatusKey])
-                .ubiquitousItemDownloadingStatus else { continue }
-            if status == .notDownloaded {
-                count += 1
-            }
-        }
-        return count
+        notDownloadedItems(under: directory).count
     }
 }

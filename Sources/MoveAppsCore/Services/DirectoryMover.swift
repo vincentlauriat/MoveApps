@@ -54,16 +54,22 @@ public struct DirectoryMover: Sendable {
             }
         }
 
-        let copied = await copier.copy(from: source, to: destination)
-        guard copied else {
-            return .failed(reason: "copy failed")
-        }
+        // The exit code is intentionally discarded here: the path-set comparison below is the
+        // sole judge of success. `ditto` exits non-zero when the source tree contains items it
+        // fundamentally cannot duplicate (a stale `.git/fsmonitor--daemon.ipc` UNIX socket left
+        // behind by `core.fsmonitor`, a FIFO, a device node) even though every regular file,
+        // directory, and symlink copied correctly. Trusting that exit code alone used to
+        // hard-fail (or, for a git source, false-escalate the pipeline to `.critical`, stranding
+        // the project in both places) a transfer that had actually fully succeeded.
+        _ = await copier.copy(from: source, to: destination)
 
         // Structural loss net, run after every ditto fallback. Compare the *sets* of relative
         // paths, not just item counts: a count check is fooled when ditto drops one file while a
-        // compensating file appears elsewhere (a stray `.DS_Store`), leaving the totals equal —
-        // exactly the silent loss the `onyx` incident exposed. Checked on the source: the
-        // destination's `.git` may be the very thing that was lost.
+        // compensating file appears elsewhere (a stray
+        // `.DS_Store`), leaving the totals equal — exactly the silent loss the `onyx` incident
+        // exposed. Checked on the source: the destination's `.git` may be the very thing that
+        // was lost. Special files are excluded from both sides (see `relativePaths`) since no
+        // copy tool can duplicate them — their absence at the destination is not data loss.
         //
         // Responsibility split by source kind:
         //  - Non-git source has no downstream safety check, so a missing path is hard-failed here
@@ -79,26 +85,51 @@ public struct DirectoryMover: Sendable {
         let missing = sourcePaths.subtracting(destPaths).sorted()
 
         let isGitTracked = fileManager.fileExists(atPath: source.appendingPathComponent(".git").path)
-        if !isGitTracked, !missing.isEmpty {
-            let shown = missing.prefix(5).joined(separator: ", ")
-            let overflow = missing.count > 5 ? " et \(missing.count - 5) de plus" : ""
-            return .failed(reason: "copie incomplète — chemins manquants : \(shown)\(overflow)")
+        guard missing.isEmpty else {
+            if !isGitTracked {
+                // A real, substantive gap — clean up the partial destination this attempt created
+                // so a retry sees a free slot instead of tripping the "destination already exists"
+                // guard on a copy that will never complete on its own.
+                try? fileManager.removeItem(at: destination)
+                let shown = missing.prefix(5).joined(separator: ", ")
+                let overflow = missing.count > 5 ? " et \(missing.count - 5) de plus" : ""
+                return .failed(reason: "copie incomplète — chemins manquants : \(shown)\(overflow)")
+            }
+            return .copiedPendingDeletion(missingPaths: missing)
         }
-        return .copiedPendingDeletion(missingPaths: missing)
+        // ditto may have exited non-zero here (it errored solely on a special file it skipped)
+        // with nothing actually missing — the path-set comparison above is what decided that,
+        // not the exit code, so this is still a clean success.
+        return .copiedPendingDeletion(missingPaths: [])
     }
 }
 
 extension FileManager {
-    /// Every path under `url` (files and directories alike), each relative to `url` — one
+    /// Every regular file, directory, and symlink under `url`, each relative to `url` — one
     /// enumeration pass, mirroring `find <dir>`. Comparing two of these sets proves a copy
     /// reproduced every source path rather than merely matching item counts.
+    ///
+    /// Sockets, FIFOs, and device nodes are excluded on purpose: they are transient runtime
+    /// state (e.g. a stale `.git/fsmonitor--daemon.ipc` UNIX socket left by `core.fsmonitor`)
+    /// that no copy tool can duplicate, so their absence at the destination is not data loss.
     func relativePaths(at url: URL) -> Set<String> {
         let root = url.standardizedFileURL.path
-        guard let enumerator = enumerator(at: url, includingPropertiesForKeys: nil, options: []) else {
+        guard let enumerator = enumerator(
+            at: url,
+            includingPropertiesForKeys: [.fileResourceTypeKey],
+            options: []
+        ) else {
             return []
         }
         var paths: Set<String> = []
         for case let item as URL in enumerator {
+            let resourceType = try? item.resourceValues(forKeys: [.fileResourceTypeKey]).fileResourceType
+            switch resourceType {
+            case .regular, .directory, .symbolicLink, nil:
+                break
+            default:
+                continue
+            }
             let path = item.standardizedFileURL.path
             if path.hasPrefix(root + "/") {
                 paths.insert(String(path.dropFirst(root.count + 1)))

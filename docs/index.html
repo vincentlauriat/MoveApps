@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoveApps for macOS — move whole dev projects between iCloud and your local disk</title>
+<meta name="description" content="A native SwiftUI app that moves entire development projects between an iCloud Drive archive and a local working root — without breaking git repos, Python virtualenvs, or Xcode, Node, Rust and Go projects. Free, open source, signed &amp; notarized.">
+<link rel="icon" type="image/png" href="assets/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://vincentlauriat.github.io/MoveApps/">
+<meta property="og:title" content="MoveApps for macOS — move whole dev projects between iCloud and your local disk">
+<meta property="og:description" content="Bidirectional transfers between an iCloud Drive archive and a local working root, with a multi-Mac checkout lock. Native SwiftUI, free and open source.">
+<meta property="og:image" content="https://vincentlauriat.github.io/MoveApps/assets/icon.png">
+<meta name="twitter:card" content="summary">
+<style>
+  :root {
+    --bg: #0a1117;
+    --bg-card: #121c24;
+    --text: #e6edf3;
+    --muted: #94a7b4;
+    --accent: #2dd4bf;
+    --border: #1f3038;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+    background-image:
+      radial-gradient(ellipse 70% 50% at 20% -10%, rgba(45,212,191,.14), transparent 60%),
+      radial-gradient(ellipse 60% 45% at 85% 0%, rgba(45,212,191,.07), transparent 60%);
+    background-repeat: no-repeat;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+  header { text-align: center; padding: 72px 0 24px; }
+  header img.icon { width: 128px; height: 128px; border-radius: 28px; box-shadow: 0 12px 40px rgba(45,212,191,.28); }
+  h1 { font-size: 2.6rem; margin: 24px 0 8px; letter-spacing: -.02em; }
+  .tagline { font-size: 1.25rem; color: var(--muted); max-width: 640px; margin: 0 auto; }
+  .tagline strong { color: var(--accent); font-weight: 600; }
+  .buttons { margin: 32px 0 8px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block; padding: 13px 26px; border-radius: 12px;
+    font-weight: 600; text-decoration: none; font-size: 1.02rem;
+    transition: transform .12s ease, box-shadow .12s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-primary { background: var(--accent); color: #04211f; box-shadow: 0 6px 24px rgba(45,212,191,.32); }
+  .btn-secondary { background: var(--bg-card); color: var(--text); border: 1px solid var(--border); }
+  .fineprint { color: var(--muted); font-size: .88rem; }
+
+  .roots {
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 12px; margin: 52px auto 0; max-width: 720px;
+  }
+  .root {
+    flex: 1 1 240px; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px; text-align: left;
+  }
+  .root .label { font-size: .74rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .root code { display: inline-block; margin: 8px 0 6px; font-size: .92rem; }
+  .root p { color: var(--muted); font-size: .9rem; }
+  .swap { font-size: 1.6rem; color: var(--accent); flex: 0 0 auto; padding: 0 4px; }
+
+  section { padding: 56px 0 8px; }
+  h2 { font-size: 1.7rem; margin-bottom: 20px; letter-spacing: -.01em; }
+  h2 .em { color: var(--accent); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 20px 22px;
+  }
+  .card h3 { font-size: 1.05rem; margin-bottom: 6px; }
+  .card p { color: var(--muted); font-size: .95rem; }
+  .steps { counter-reset: step; }
+  .step { display: flex; gap: 16px; margin-bottom: 22px; }
+  .step .n {
+    counter-increment: step; flex: 0 0 36px; height: 36px; border-radius: 50%;
+    background: var(--accent); color: #04211f; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step .n::before { content: counter(step); }
+  .step p { color: var(--muted); }
+  .step strong { color: var(--text); }
+  code, pre {
+    font-family: "SF Mono", ui-monospace, Menlo, monospace;
+    background: #0d161d; border: 1px solid var(--border); border-radius: 8px;
+  }
+  code { padding: 2px 7px; font-size: .9em; }
+  pre { padding: 18px 20px; overflow-x: auto; margin: 16px 0; }
+  pre code { background: none; border: none; padding: 0; }
+  ol.install { margin: 16px 0 0 20px; color: var(--muted); }
+  ol.install li { margin-bottom: 10px; }
+  ol.install strong { color: var(--text); }
+  a { color: var(--accent); }
+  footer { text-align: center; padding: 64px 0 40px; color: var(--muted); font-size: .9rem; }
+  footer a { color: var(--muted); }
+  @media (max-width: 560px) {
+    h1 { font-size: 2rem; }
+    .tagline { font-size: 1.1rem; }
+    .swap { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+
+<header class="wrap">
+  <img class="icon" src="assets/icon.png" alt="MoveApps app icon">
+  <h1>MoveApps</h1>
+  <p class="tagline">Move a whole development project between your iCloud Drive archive and your local
+  working disk — <strong>without breaking git, virtualenvs or Xcode</strong>.</p>
+  <div class="buttons">
+    <a class="btn btn-primary" href="https://github.com/vincentlauriat/MoveApps/releases/latest">⬇︎&nbsp; Download for macOS</a>
+    <a class="btn btn-secondary" href="https://github.com/vincentlauriat/MoveApps">View on GitHub</a>
+  </div>
+  <p class="fineprint">Free &amp; open source (MIT) · macOS 26+ · signed &amp; notarized DMG · Sparkle auto-updates</p>
+
+  <div class="roots">
+    <div class="root">
+      <span class="label">Archive</span>
+      <code>~/Documents/GitHub</code>
+      <p>On iCloud Drive. Synced across your Macs, slow for file operations, right for projects you are not touching at the moment.</p>
+    </div>
+    <div class="swap">⇄</div>
+    <div class="root">
+      <span class="label">Active</span>
+      <code>~/DevApps</code>
+      <p>A plain local directory. Nothing intercepts your writes, so git, builds and package managers behave normally.</p>
+    </div>
+  </div>
+</header>
+
+<section class="wrap">
+  <h2>Features</h2>
+  <div class="grid">
+    <div class="card"><h3>⇄ Bidirectional transfers</h3><p>Pull a project out of the archive to work on it, push it back when you are done. The same guarantees apply in both directions.</p></div>
+    <div class="card"><h3>🧩 Stack-aware moves</h3><p>Detects git, Node, Python, Xcode, Rust and Go projects. Python virtualenvs are recreated on arrival — a venv hardcodes its own path and cannot simply be relocated.</p></div>
+    <div class="card"><h3>☁️ Built for iCloud Drive</h3><p>Files that exist only in the cloud are materialized before the move. When iCloud's FileProvider makes a plain <code>mv</code> time out, the transfer falls back to a verified copy-then-delete.</p></div>
+    <div class="card"><h3>🔒 Multi-Mac checkout lock</h3><p>Taking a project leaves a trace at its place in the shared archive — which Mac took it, and when — so a second Mac cannot take the same project until it is returned. A <em>Release</em> button clears a stale trace by hand.</p></div>
+    <div class="card"><h3>🗂️ One index, both roots</h3><p>Generates a unified <code>INDEX.md</code> covering archive and active side by side — category folder, detected stack, disk size, and the description read from each project's README — and writes an identical copy into both roots.</p></div>
+    <div class="card"><h3>📋 Menu bar &amp; main window</h3><p>A menu bar dashboard for quick transfers, plus a window with two hierarchical lists: collapsible folders, ⌘/⇧ multi-select, search, and per-root counters and disk usage.</p></div>
+  </div>
+</section>
+
+<section class="wrap">
+  <h2>How a transfer <span class="em">actually works</span></h2>
+  <div class="steps">
+    <div class="step"><span class="n"></span><p><strong>Everything is downloaded first.</strong> iCloud Drive keeps evicted files around as placeholders. MoveApps forces the whole project to be materialized locally before anything moves, so nothing is silently lost on the way.</p></div>
+    <div class="step"><span class="n"></span><p><strong>The move survives iCloud's FileProvider.</strong> A native <code>mv</code> between the two roots can fail with <em>Operation timed out</em> even though both live on the same volume. MoveApps then copies, verifies the file count, and deletes the source only once the copy is confirmed complete.</p></div>
+    <div class="step"><span class="n"></span><p><strong>The project is put back together.</strong> Stack-specific fixups run at the destination — virtualenvs rebuilt, git state checked before and after, leftover references to the old path and broken symlinks reported.</p></div>
+    <div class="step"><span class="n"></span><p><strong>You can watch it happen.</strong> A dedicated Debug window traces each step of a transfer live, including a single self-updating line for the iCloud download (files fetched, elapsed time, budget) — useful when a large project is taking its time.</p></div>
+  </div>
+  <p class="fineprint">One exception: the top-level <code>Templates</code> folder holds shared scripts referenced by relative path from both roots, so a transfer <strong>copies</strong> it instead of moving it, and never places a lock on it.</p>
+</section>
+
+<section class="wrap">
+  <h2>Install</h2>
+  <ol class="install">
+    <li><strong>Download the DMG</strong> from the <a href="https://github.com/vincentlauriat/MoveApps/releases/latest">latest release</a>.</li>
+    <li><strong>Drag <code>MoveApps.app</code> into Applications.</strong></li>
+    <li><strong>Launch it.</strong> The app is Developer ID signed and notarized by Apple, so it opens normally — no right-click &rarr; Open dance to get past Gatekeeper.</li>
+  </ol>
+  <p style="margin-top:16px">Requires <strong>macOS 26.0 or later</strong>. After the first install, MoveApps checks for new versions at launch through Sparkle and offers them to you — it never installs anything without your confirmation.</p>
+  <p style="margin-top:16px">Prefer to build it yourself:</p>
+  <pre><code>brew install xcodegen
+git clone https://github.com/vincentlauriat/MoveApps.git
+cd MoveApps
+xcodegen generate
+open MoveApps.xcodeproj   # then ⌘R</code></pre>
+  <p>The design is written up in <a href="https://github.com/vincentlauriat/MoveApps/blob/main/ARCHITECTURE_EN.md">ARCHITECTURE_EN.md</a>, and day-to-day usage in the <a href="https://github.com/vincentlauriat/MoveApps/blob/main/USER_GUIDE.md">user guide</a>. A legacy shell script, <code>move-app.sh</code>, remains in the repo as a CLI fallback but is no longer actively maintained.</p>
+</section>
+
+<footer>
+  <p>MIT © Vincent Lauriat · <a href="https://github.com/vincentlauriat/MoveApps">github.com/vincentlauriat/MoveApps</a> · <a href="https://vincentlauriat.github.io/">more apps</a></p>
+</footer>
+
+</body>
+</html>

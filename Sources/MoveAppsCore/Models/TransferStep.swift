@@ -11,6 +11,12 @@ public enum MoveStrategy: Sendable, Hashable {
     case copy
 }
 
+/// Which side of the move a git integrity check looked at.
+public enum GitCheckPhase: Sendable, Hashable {
+    case beforeMove
+    case afterMove
+}
+
 /// Progressive step emitted by `TransferPipeline.run` as an `AsyncStream`.
 public enum TransferStep: Sendable {
     case detectingStack
@@ -22,6 +28,9 @@ public enum TransferStep: Sendable {
     case reinstallingNodeModules
     case creatingCompatibilitySymlink
     case verifyingGitAfter
+    /// The outcome of a git integrity check, so the log line for the step says how it went
+    /// instead of only announcing it.
+    case gitIntegrityChecked(GitCheckPhase, repo: String, GitIntegrity)
     case measuringSize
     case scanningResidualPaths
     case scanningSymlinks

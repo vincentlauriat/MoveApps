@@ -148,7 +148,8 @@ actor StubInitScriptRunner: InitScriptRunning {
 struct NeverResolvingMaterializer: ICloudMaterializing {
     let attempts: Int
 
-    func materialize(at directory: URL, onProgress: @Sendable (MaterializationProgress) -> Void) async {
+    @discardableResult
+    func materialize(at directory: URL, onProgress: @Sendable (MaterializationProgress) -> Void) async -> MaterializationOutcome {
         for attempt in 1...max(1, attempts) {
             onProgress(MaterializationProgress(
                 remaining: 1,
@@ -158,6 +159,7 @@ struct NeverResolvingMaterializer: ICloudMaterializing {
                 isFinal: attempt == attempts
             ))
         }
+        return MaterializationOutcome(failures: [], remaining: 1, total: 1)
     }
 }
 

@@ -7,12 +7,16 @@ public struct GitSnapshot: Sendable, Hashable, Codable {
     public let head: String?
     public let dirtyCount: Int
     public let deletedPaths: [String]
+    /// `false` when `git status` itself failed (e.g. "bad tree object HEAD" on a repo whose pack
+    /// is gone): the empty `dirtyCount`/`deletedPaths` then mean "unknown", not "clean".
+    public let statusReadable: Bool
 
-    public init(branch: String?, head: String?, dirtyCount: Int, deletedPaths: [String]) {
+    public init(branch: String?, head: String?, dirtyCount: Int, deletedPaths: [String], statusReadable: Bool = true) {
         self.branch = branch
         self.head = head
         self.dirtyCount = dirtyCount
         self.deletedPaths = deletedPaths
+        self.statusReadable = statusReadable
     }
 
     /// A snapshot of a non-git directory.

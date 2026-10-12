@@ -41,6 +41,22 @@ struct ICloudMaterializerTests {
         #expect(reports.last?.downloaded == 0)
     }
 
+    @Test("a refused download request is returned, not swallowed")
+    func refusedDownloadIsReturned() async {
+        let root = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: root) }
+        // Not actually ubiquitous, so `startDownloadingUbiquitousItem` throws for it.
+        Fixture.write("stub", to: root.appendingPathComponent("sub/.document.pdf.icloud"))
+
+        let materializer = FileProviderMaterializer(maxAttempts: 1, pollInterval: .milliseconds(5))
+        let outcome = await materializer.materialize(at: root) { _ in }
+
+        #expect(outcome.failures.map(\.path) == ["sub/.document.pdf.icloud"])
+        #expect(outcome.failures.first?.reason.isEmpty == false)
+        #expect(outcome.remaining == 1)
+        #expect(outcome.total == 1)
+    }
+
     @Test("a directory with nothing to download reports once, final and empty")
     func nothingToDownloadReportsOnce() async {
         let root = Fixture.makeTempDir()

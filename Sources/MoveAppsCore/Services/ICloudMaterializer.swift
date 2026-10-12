@@ -27,12 +27,47 @@ public struct MaterializationProgress: Sendable, Hashable {
     public var downloaded: Int { max(0, total - remaining) }
 }
 
+/// A file iCloud refused to start downloading, with the reason it gave.
+public struct MaterializationFailure: Sendable, Hashable, Codable {
+    /// Path relative to the materialized directory.
+    public let path: String
+    public let reason: String
+
+    public init(path: String, reason: String) {
+        self.path = path
+        self.reason = reason
+    }
+}
+
+/// What a materialization stage ended on, so the transfer result — not only the progress line —
+/// says when files did not come down.
+public struct MaterializationOutcome: Sendable, Hashable {
+    /// Download requests that threw.
+    public let failures: [MaterializationFailure]
+    /// Files still not downloaded when the stage ended.
+    public let remaining: Int
+    /// Files that were waiting when the stage started.
+    public let total: Int
+
+    public init(failures: [MaterializationFailure], remaining: Int, total: Int) {
+        self.failures = failures
+        self.remaining = remaining
+        self.total = total
+    }
+
+    public static let nothingToDo = MaterializationOutcome(failures: [], remaining: 0, total: 0)
+}
+
 /// Forces iCloud-dematerialized files to download before a move.
 public protocol ICloudMaterializing: Sendable {
     /// Materializes pending stubs under `directory`, reporting progress on each polling attempt.
     /// Must be bounded: it always terminates even if items never materialize (the bash version
     /// caps at 30 attempts × 2s), and always ends on a report with `isFinal` set.
-    func materialize(at directory: URL, onProgress: @Sendable (MaterializationProgress) -> Void) async
+    ///
+    /// Only items present locally as placeholders can be seen here: a file iCloud never
+    /// delivered at all is invisible to this stage, which is why the git integrity check exists.
+    @discardableResult
+    func materialize(at directory: URL, onProgress: @Sendable (MaterializationProgress) -> Void) async -> MaterializationOutcome
 }
 
 /// Real materializer using `FileManager.startDownloadingUbiquitousItem` plus bounded polling
@@ -47,7 +82,8 @@ public actor FileProviderMaterializer: ICloudMaterializing {
         self.pollInterval = pollInterval
     }
 
-    public func materialize(at directory: URL, onProgress: @Sendable (MaterializationProgress) -> Void) async {
+    @discardableResult
+    public func materialize(at directory: URL, onProgress: @Sendable (MaterializationProgress) -> Void) async -> MaterializationOutcome {
         let clock = ContinuousClock()
         let started = clock.now
         let limit = pollInterval * maxAttempts
@@ -65,25 +101,37 @@ public actor FileProviderMaterializer: ICloudMaterializing {
 
         guard total > 0 else {
             report(remaining: 0, isFinal: true)
-            return
+            return .nothingToDo
         }
         report(remaining: total, isFinal: false)
 
+        // A refused download request is kept, not swallowed: it is the only first-hand reason
+        // iCloud gives for a file that then never arrives.
+        var failures: [MaterializationFailure] = []
+        let basePath = directory.standardizedFileURL.path
         for item in notDownloadedItems(under: directory) {
-            try? fileManager.startDownloadingUbiquitousItem(at: item)
+            do {
+                try fileManager.startDownloadingUbiquitousItem(at: item)
+            } catch {
+                let itemPath = item.standardizedFileURL.path
+                let relative = itemPath.hasPrefix(basePath + "/") ? String(itemPath.dropFirst(basePath.count + 1)) : item.lastPathComponent
+                failures.append(MaterializationFailure(path: relative, reason: error.localizedDescription))
+            }
         }
 
+        var remaining = total
         var attempt = 0
         while attempt < maxAttempts {
             try? await Task.sleep(for: pollInterval)
-            let remaining = pendingCount(under: directory)
+            remaining = pendingCount(under: directory)
             attempt += 1
             // The budget running out is just as much an end of the stage as everything arriving:
             // either way this is the last thing said about it, so the line settles on a final state
             // instead of being left mid-count.
             report(remaining: remaining, isFinal: remaining == 0 || attempt == maxAttempts)
-            if remaining == 0 { return }
+            if remaining == 0 { break }
         }
+        return MaterializationOutcome(failures: failures, remaining: remaining, total: total)
     }
 
     /// URLs of items under `directory` not yet materialized locally: `.icloud` stub files

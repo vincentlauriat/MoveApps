@@ -435,6 +435,10 @@ public final class MainWindowViewModel {
             )
             return
         }
+        if case .gitIntegrityChecked(_, _, let integrity) = step {
+            debugLog.log(ProjectListing.describe(step), kind: ProjectListing.kind(integrity))
+            return
+        }
         guard case .finished(let result) = step else {
             debugLog.log(ProjectListing.describe(step))
             return

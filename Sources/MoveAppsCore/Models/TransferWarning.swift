@@ -37,11 +37,29 @@ public enum TransferWarning: Sendable, Hashable, Codable {
     /// leaving the source slot without a "taken" trace. Not critical (the transfer itself
     /// succeeded), but surfaced so the hole is never silent.
     case checkoutReferenceWriteFailed(reason: String)
+    /// `git fsck --connectivity-only` failed on the repo at `repo`: objects reachable from a ref
+    /// are missing (a pack file gone or truncated — the VisualRami incident). `preExisting` when
+    /// the source already failed the same check before the move. Drives `.critical`.
+    case gitRepositoryCorrupted(repo: String, errorCount: Int, sample: [String], preExisting: Bool)
+    /// Tracked files already absent from the work tree before the move, with no iCloud
+    /// placeholder for them. Not critical — an uncommitted deletion looks the same — but never ok.
+    case gitTrackedFilesAlreadyMissing(repo: String, paths: [String])
+    /// Tracked files present only as a `.<name>.icloud` stub: never downloaded, not lost.
+    case gitTrackedFilesNotDownloaded(repo: String, paths: [String])
+    /// `git status` failed on the repo, so the before/after comparison saw nothing at all.
+    case gitStatusUnreadable(repo: String)
+    /// The integrity check could not complete (timeout, git failure), so a clean result from it
+    /// would be meaningless. Surfaced so an unfinished check is never mistaken for a clean one.
+    case gitIntegrityCheckIncomplete(repo: String, reason: String)
+    /// iCloud refused to start downloading some files (`count` in all, the first few in `sample`).
+    case iCloudDownloadFailed(count: Int, sample: [MaterializationFailure])
+    /// The iCloud download budget ran out with files still not downloaded.
+    case iCloudDownloadIncomplete(remaining: Int, total: Int)
 
     /// Whether this warning must escalate the overall result to `.critical`.
     public var isCritical: Bool {
         switch self {
-        case .gitDeletedFilesDetected, .untrackedFileLostInCopy: return true
+        case .gitDeletedFilesDetected, .untrackedFileLostInCopy, .gitRepositoryCorrupted: return true
         default: return false
         }
     }

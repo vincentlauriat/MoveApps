@@ -71,6 +71,8 @@ public enum ProjectListing {
         case .reinstallingNodeModules: return "Réinstallation de node_modules…"
         case .creatingCompatibilitySymlink: return "Création du lien de compatibilité…"
         case .verifyingGitAfter: return "Vérification git (après)…"
+        case .gitIntegrityChecked(let phase, let repo, let integrity):
+            return describe(integrity, phase: phase, repo: repo)
         case .measuringSize: return "Mesure de la taille…"
         case .scanningResidualPaths: return "Analyse des chemins résiduels…"
         case .scanningSymlinks: return "Analyse des liens symboliques…"
@@ -78,10 +80,48 @@ public enum ProjectListing {
             switch result.status {
             case .ok: return "Terminé"
             case .warning: return "Terminé avec avertissements"
-            case .critical: return "Critique — source préservée"
+            // A rename has already moved the source, so "préservée" would be false there.
+            case .critical: return result.sourceDeleted ? "Critique — voir les avertissements" : "Critique — source préservée"
             case .failed: return "Échec : \(result.failureReason ?? "raison inconnue")"
             }
         }
+    }
+
+    /// What to do about a repository whose content is incomplete.
+    static let gitRepairAdvice = "re-cloner depuis le remote ou restaurer depuis iCloud"
+
+    /// A git integrity check in words: which repo, what was found, and what to do about it.
+    public static func describe(_ integrity: GitIntegrity, phase: GitCheckPhase, repo: String) -> String {
+        let label = phase == .beforeMove ? "Intégrité git (avant)" : "Intégrité git (après)"
+        var problems: [String] = []
+        if integrity.isCorrupted {
+            problems.append("\(integrity.fsckErrorCount) erreur(s) git fsck")
+        }
+        if !integrity.missingTrackedFiles.isEmpty {
+            problems.append("\(integrity.missingTrackedFiles.count) fichier(s) suivi(s) absent(s) : "
+                + sample(integrity.missingTrackedFiles))
+        }
+        if !integrity.iCloudPendingTrackedFiles.isEmpty {
+            problems.append("\(integrity.iCloudPendingTrackedFiles.count) fichier(s) suivi(s) jamais téléchargé(s) d'iCloud : "
+                + sample(integrity.iCloudPendingTrackedFiles))
+        }
+        if let reason = integrity.incompleteReason {
+            problems.append("vérification incomplète (\(reason))")
+        }
+        guard !problems.isEmpty else { return "\(label) : OK" }
+        return "\(label) de \(repo) : " + problems.joined(separator: " ; ") + " — " + gitRepairAdvice
+    }
+
+    /// How a git integrity line should be coloured in the debug log.
+    public static func kind(_ integrity: GitIntegrity) -> DebugLogEntry.Kind {
+        if integrity.isCorrupted { return .error }
+        return integrity.isHealthy ? .success : .warning
+    }
+
+    /// The first few paths of a list, then how many more — enough to act on without flooding a line.
+    private static func sample(_ paths: [String], limit: Int = 5) -> String {
+        let shown = paths.prefix(limit).joined(separator: ", ")
+        return paths.count > limit ? shown + " (+\(paths.count - limit))" : shown
     }
 
     /// The iCloud download stage in words. Says how many of how many have come down, how long it's
@@ -145,6 +185,24 @@ public enum ProjectListing {
             return "Analyse des références résiduelles incomplète (dossier illisible)"
         case .symlinkScanIncomplete:
             return "Analyse des liens symboliques incomplète (dossier illisible)"
+        case .gitRepositoryCorrupted(let repo, let count, let sampleLines, let preExisting):
+            let when = preExisting ? "déjà présentes avant le déplacement" : "apparues pendant le déplacement"
+            let first = sampleLines.first.map { " (\($0))" } ?? ""
+            return "Dépôt git endommagé \(repo) : \(count) erreur(s) git fsck, \(when)\(first) — \(gitRepairAdvice)"
+        case .gitTrackedFilesAlreadyMissing(let repo, let paths):
+            return "Fichiers suivis déjà absents avant le déplacement dans \(repo) : \(paths.count) — "
+                + sample(paths) + " — si ce n'est pas une suppression volontaire, \(gitRepairAdvice)"
+        case .gitTrackedFilesNotDownloaded(let repo, let paths):
+            return "Fichiers suivis jamais téléchargés d'iCloud dans \(repo) : \(paths.count) — " + sample(paths)
+        case .gitStatusUnreadable(let repo):
+            return "git status illisible dans \(repo) : la comparaison avant/après n'a rien pu vérifier — \(gitRepairAdvice)"
+        case .gitIntegrityCheckIncomplete(let repo, let reason):
+            return "Vérification d'intégrité git incomplète pour \(repo) : \(reason)"
+        case .iCloudDownloadFailed(let count, let failures):
+            let first = failures.first.map { " — \($0.path) : \($0.reason)" } ?? ""
+            return "Téléchargement iCloud refusé pour \(count) fichier(s)\(first)"
+        case .iCloudDownloadIncomplete(let remaining, let total):
+            return "Téléchargement iCloud incomplet : \(remaining) fichier(s) sur \(total) non récupéré(s)"
         }
     }
 }

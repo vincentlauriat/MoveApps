@@ -8,6 +8,11 @@ import Foundation
 /// lost tracked files (`D ` entries in `git status --porcelain`) escalate the result to
 /// `.critical` and the source is preserved. This deviates from the bash script, which
 /// deleted the source inside `move_dir` before the git check; here deletion is deferred.
+///
+/// The snapshot comparison only sees what the move changes. A repo already damaged before the
+/// move (the VisualRami incident: pack gone, tracked files missing) compares equal to itself,
+/// so each side is also put through `GitService.checkIntegrity`, and damage found there is
+/// never reported as ok.
 public actor TransferPipeline {
     private let roots: RootLocations
     private let stackDetector: StackDetector
@@ -122,9 +127,19 @@ public actor TransferPipeline {
         emit(.detectingStack)
         _ = stackDetector.detect(at: source)
 
-        // 2. iCloud materialization (bounded).
-        await materializer.materialize(at: source) { progress in
+        // 2. iCloud materialization (bounded). What did not come down ends up in the result, not
+        //    only on the progress line.
+        let materialization = await materializer.materialize(at: source) { progress in
             emit(.materializingICloud(progress))
+        }
+        if !materialization.failures.isEmpty {
+            warnings.append(.iCloudDownloadFailed(
+                count: materialization.failures.count,
+                sample: Array(materialization.failures.prefix(10))
+            ))
+        }
+        if materialization.remaining > 0 {
+            warnings.append(.iCloudDownloadIncomplete(remaining: materialization.remaining, total: materialization.total))
         }
 
         // 3. Capture venv state before the move (absolute paths still valid).
@@ -138,6 +153,13 @@ public actor TransferPipeline {
         // 4. Git snapshot before.
         emit(.snapshottingGitBefore)
         let before = await gitService.snapshot(source)
+        // 4b. Integrity before the move, so damage already there (the VisualRami incident) is
+        //     attributed to the source and not to the move — and is reported at all: the
+        //     before/after status comparison below cannot see what the move did not change.
+        let integrityBefore = await gitService.checkIntegrity(source)
+        if let integrityBefore {
+            emit(.gitIntegrityChecked(.beforeMove, repo: source.path, integrityBefore))
+        }
 
         // 5. Move — or a pure copy for a shared resource, which must survive at the source.
         let outcome = await mover.move(from: source, to: destination, copyOnly: copyOnly)
@@ -162,14 +184,33 @@ public actor TransferPipeline {
         // 6. Git snapshot after — BEFORE any source deletion (the onyx guarantee).
         emit(.verifyingGitAfter)
         let after = await gitService.snapshot(destination)
-        if before.isRepo {
-            let newlyDeleted = after.deletedPaths.filter { !before.deletedPaths.contains($0) }
+        let integrityAfter = await gitService.checkIntegrity(destination)
+        if let integrityAfter {
+            emit(.gitIntegrityChecked(.afterMove, repo: destination.path, integrityAfter))
+        }
+        if before.isRepo || integrityBefore != nil {
+            // `git ls-files --deleted` joins `git status` here because it still answers when status
+            // fails on a broken object store, which would otherwise read as "nothing deleted".
+            let missingBefore = Set(before.deletedPaths
+                + (integrityBefore?.missingTrackedFiles ?? [])
+                + (integrityBefore?.iCloudPendingTrackedFiles ?? []))
+            var seen: Set<String> = []
+            let newlyDeleted = (after.deletedPaths + (integrityAfter?.missingTrackedFiles ?? []))
+                .filter { !missingBefore.contains($0) && seen.insert($0).inserted }
             if !newlyDeleted.isEmpty {
                 warnings.append(.gitDeletedFilesDetected(paths: newlyDeleted))
             } else if before.dirtyCount != after.dirtyCount {
                 warnings.append(.gitDirtyCountChanged(before: before.dirtyCount, after: after.dirtyCount))
             }
         }
+
+        warnings.append(contentsOf: integrityWarnings(
+            before: integrityBefore,
+            after: integrityAfter,
+            statusReadable: before.statusReadable && after.statusReadable,
+            source: source,
+            destination: destination
+        ))
 
         // Path-set losses git cannot report as deletions (untracked / gitignored working-tree
         // files the ditto fallback dropped). Only signal the ones the git snapshot did not already
@@ -198,11 +239,13 @@ public actor TransferPipeline {
             sourceDeleted = !fileManager.fileExists(atPath: source.path)
         }
 
-        // 7b. Archive → Active check-out: once the source slot is confirmed gone (and the onyx
-        //     invariant held — no critical loss), leave a marker at the original path so another
-        //     Mac sees it as "taken", not free. A write failure is surfaced, never swallowed:
-        //     the "re-taken by mistake" hole reopens if this fails silently.
-        if plan.from == .archive && sourceDeleted && !isCritical {
+        // 7b. Archive → Active check-out: once the source slot is confirmed gone, leave a marker at
+        //     the original path so another Mac sees it as "taken", not free. A critical copy never
+        //     gets here (its source is preserved, so `sourceDeleted` is false); a critical rename
+        //     does — its slot is gone all the same (a repo damaged before the move, typically), and
+        //     leaving it unmarked would let another Mac read it as free. A write failure is
+        //     surfaced, never swallowed: the "re-taken by mistake" hole reopens if this fails silently.
+        if plan.from == .archive && sourceDeleted {
             emit(.measuringSize)
             let size = await diskUsage.sizeBytes(of: destination)
             do {
@@ -259,6 +302,51 @@ public actor TransferPipeline {
         warnings.append(contentsOf: symlinkVerifier.scan(root: destination))
 
         emit(.finished(.make(warnings: warnings, sourceDeleted: sourceDeleted, destinationURL: destination)))
+    }
+
+    /// Turns the before/after integrity checks into warnings, each reported once and attributed
+    /// to the source when it was already there before the move.
+    private func integrityWarnings(
+        before: GitIntegrity?,
+        after: GitIntegrity?,
+        statusReadable: Bool,
+        source: URL,
+        destination: URL
+    ) -> [TransferWarning] {
+        guard before != nil || after != nil else { return [] }
+        let repo = destination.path
+        var result: [TransferWarning] = []
+
+        let corruptedBefore = before?.isCorrupted ?? false
+        if let after, after.isCorrupted {
+            result.append(.gitRepositoryCorrupted(
+                repo: repo, errorCount: after.fsckErrorCount, sample: after.fsckSample, preExisting: corruptedBefore
+            ))
+        } else if let before, before.isCorrupted {
+            // The check after the move did not run to completion (or found no repo): the damage
+            // seen before still stands.
+            result.append(.gitRepositoryCorrupted(
+                repo: repo, errorCount: before.fsckErrorCount, sample: before.fsckSample, preExisting: true
+            ))
+        } else if !statusReadable {
+            result.append(.gitStatusUnreadable(repo: repo))
+        }
+
+        if let before, !before.missingTrackedFiles.isEmpty {
+            result.append(.gitTrackedFilesAlreadyMissing(repo: repo, paths: before.missingTrackedFiles))
+        }
+        let pending = (after ?? before)?.iCloudPendingTrackedFiles ?? []
+        if !pending.isEmpty {
+            result.append(.gitTrackedFilesNotDownloaded(repo: repo, paths: pending))
+        }
+
+        if let reason = before?.incompleteReason {
+            result.append(.gitIntegrityCheckIncomplete(repo: source.path, reason: "avant le déplacement : " + reason))
+        }
+        if let reason = after?.incompleteReason {
+            result.append(.gitIntegrityCheckIncomplete(repo: repo, reason: "après le déplacement : " + reason))
+        }
+        return result
     }
 
     private func relativePath(of url: URL, under base: URL) -> String {

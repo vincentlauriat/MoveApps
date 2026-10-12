@@ -239,11 +239,13 @@ public actor TransferPipeline {
             sourceDeleted = !fileManager.fileExists(atPath: source.path)
         }
 
-        // 7b. Archive → Active check-out: once the source slot is confirmed gone (and the onyx
-        //     invariant held — no critical loss), leave a marker at the original path so another
-        //     Mac sees it as "taken", not free. A write failure is surfaced, never swallowed:
-        //     the "re-taken by mistake" hole reopens if this fails silently.
-        if plan.from == .archive && sourceDeleted && !isCritical {
+        // 7b. Archive → Active check-out: once the source slot is confirmed gone, leave a marker at
+        //     the original path so another Mac sees it as "taken", not free. A critical copy never
+        //     gets here (its source is preserved, so `sourceDeleted` is false); a critical rename
+        //     does — its slot is gone all the same (a repo damaged before the move, typically), and
+        //     leaving it unmarked would let another Mac read it as free. A write failure is
+        //     surfaced, never swallowed: the "re-taken by mistake" hole reopens if this fails silently.
+        if plan.from == .archive && sourceDeleted {
             emit(.measuringSize)
             let size = await diskUsage.sizeBytes(of: destination)
             do {

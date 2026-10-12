@@ -83,6 +83,33 @@ struct GitIntegrityTests {
         #expect(FileManager.default.fileExists(atPath: scenario.source.appendingPathComponent(".git").path))
     }
 
+    @Test("a corrupted repo renamed out of the Archive still leaves a checkout marker")
+    func corruptedRenameStillMarksTheSlot() async {
+        let scenario = makeScenario(files: ["src/game.ts": "export {}\n"])
+        defer { try? FileManager.default.removeItem(at: scenario.cleanup) }
+        deletePackFiles(in: scenario.source)
+
+        let result = await TransferPipeline(roots: scenario.roots).finalResult(for: scenario.plan)
+
+        #expect(result?.status == .critical)
+        #expect(result?.sourceDeleted == true)
+        // The slot is gone: without a marker another Mac would read it as free.
+        #expect(CheckoutReferenceStore().read(at: scenario.source) != nil)
+    }
+
+    @Test("a freshly initialized repo with no commit is healthy")
+    func unbornRepoIsHealthy() async {
+        let repo = Fixture.makeTempDir()
+        defer { try? FileManager.default.removeItem(at: repo) }
+        Fixture.runGit(["init", "-q"], in: repo)
+        #expect(await GitService().checkIntegrity(repo)?.isHealthy == true)
+
+        // Staged but never committed: still no ref, still nothing missing.
+        Fixture.write("draft\n", to: repo.appendingPathComponent("draft.txt"))
+        Fixture.runGit(["add", "draft.txt"], in: repo)
+        #expect(await GitService().checkIntegrity(repo)?.isHealthy == true)
+    }
+
     @Test("a healthy repo passes the integrity check and still ends ok")
     func healthyRepoStaysOK() async {
         let scenario = makeScenario(files: ["src/game.ts": "export {}\n", "README.md": "rami\n"])

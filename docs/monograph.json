@@ -1,0 +1,145 @@
+{
+  "name": "MoveApps",
+  "no": "20",
+  "repo": "vincentlauriat/MoveApps",
+  "url": "https://vincentlauriat.github.io/MoveApps/",
+  "accent": "#2dd4bf",
+  "meta": {
+    "title": "MoveApps for macOS — move whole dev projects between iCloud and your local disk",
+    "description": "A native SwiftUI app that moves entire development projects between an iCloud Drive archive and a local working root — without breaking git repos, Python virtualenvs, or Xcode, Node, Rust and Go projects. Free, open source, signed & notarized.",
+    "og_image": "https://vincentlauriat.github.io/MoveApps/assets/icon.png",
+    "favicon": "assets/icon.png"
+  },
+  "role": {
+    "en": "Native SwiftUI app for macOS",
+    "fr": "App SwiftUI native pour macOS",
+    "zh": "原生 SwiftUI macOS 應用程式"
+  },
+  "thesis": {
+    "en": "Move a whole development project between your iCloud Drive archive and your local working disk — <b>without breaking git, virtualenvs or Xcode</b>.",
+    "fr": "Déplacez un projet de développement entier entre votre archive iCloud Drive et votre disque de travail local — <b>sans casser git, les virtualenvs ni Xcode</b>.",
+    "zh": "在 iCloud Drive 封存區與本機工作磁碟之間搬移整個開發專案——<b>不會弄壞 git、virtualenv 或 Xcode</b>。"
+  },
+  "actions": [
+    {"primary": true, "href": "https://github.com/vincentlauriat/MoveApps/releases/latest",
+     "label": {"en": "Download for macOS", "fr": "Télécharger pour macOS", "zh": "下載 macOS 版"}},
+    {"href": "https://github.com/vincentlauriat/MoveApps",
+     "label": {"en": "View on GitHub", "fr": "Voir sur GitHub", "zh": "在 GitHub 上檢視"}}
+  ],
+  "facts": [
+    {"k": {"en": "Requires", "fr": "Configuration", "zh": "系統需求"}, "v": "macOS 26+"},
+    {"k": {"en": "Distribution", "fr": "Distribution", "zh": "發行"}, "v": {"en": "Signed &amp; notarized DMG", "fr": "DMG signé et notarié", "zh": "已簽章與公證的 DMG"}},
+    {"k": {"en": "Updates", "fr": "Mises à jour", "zh": "更新"}, "v": {"en": "Sparkle auto-updates", "fr": "Mises à jour automatiques Sparkle", "zh": "Sparkle 自動更新"}},
+    {"k": {"en": "Licence", "fr": "Licence", "zh": "授權"}, "v": {"en": "Free &amp; open source (MIT)", "fr": "Gratuit et open source (MIT)", "zh": "免費開源（MIT）"}}
+  ],
+  "opener": {
+    "h": {"en": "Features", "fr": "Fonctionnalités", "zh": "功能"}
+  },
+  "features": [
+    {"h": {"en": "Bidirectional transfers", "fr": "Transferts bidirectionnels", "zh": "雙向傳輸"},
+     "p": {"en": "Pull a project out of the archive to work on it, push it back when you are done. The same guarantees apply in both directions.",
+           "fr": "Sortez un projet de l'archive pour travailler dessus, renvoyez-le quand vous avez fini. Les mêmes garanties s'appliquent dans les deux sens.",
+           "zh": "把專案從封存區取出來工作，完成後再推回去。兩個方向都享有相同的保證。"}},
+    {"h": {"en": "Stack-aware moves", "fr": "Déplacements adaptés à la stack", "zh": "辨識技術堆疊的搬移"},
+     "p": {"en": "Detects git, Node, Python, Xcode, Rust and Go projects. Python virtualenvs are recreated on arrival — a venv hardcodes its own path and cannot simply be relocated.",
+           "fr": "Détecte les projets git, Node, Python, Xcode, Rust et Go. Les virtualenvs Python sont recréés à l'arrivée — un venv inscrit en dur son propre chemin et ne peut pas simplement être déplacé.",
+           "zh": "偵測 git、Node、Python、Xcode、Rust 與 Go 專案。Python virtualenv 會在抵達後重新建立——venv 會把自己的路徑寫死，無法單純搬移。"}},
+    {"h": {"en": "Built for iCloud Drive", "fr": "Conçu pour iCloud Drive", "zh": "為 iCloud Drive 打造"},
+     "p": {"en": "Files that exist only in the cloud are materialized before the move. When iCloud's FileProvider makes a plain <code>mv</code> time out, the transfer falls back to a verified copy-then-delete.",
+           "fr": "Les fichiers qui n'existent que dans le cloud sont matérialisés avant le déplacement. Quand le FileProvider d'iCloud fait expirer un simple <code>mv</code>, le transfert se replie sur une copie vérifiée suivie d'une suppression.",
+           "zh": "只存在於雲端的檔案會在搬移前先下載到本機。當 iCloud 的 FileProvider 讓單純的 <code>mv</code> 逾時，傳輸會改用經過驗證的「先複製、再刪除」。"}},
+    {"h": {"en": "Multi-Mac checkout lock", "fr": "Verrou d'emprunt multi-Mac", "zh": "多台 Mac 借出鎖定"},
+     "p": {"en": "Taking a project leaves a trace at its place in the shared archive — which Mac took it, and when — so a second Mac cannot take the same project until it is returned. A <em>Release</em> button clears a stale trace by hand.",
+           "fr": "Prendre un projet laisse une trace à sa place dans l'archive partagée — quel Mac l'a pris, et quand — de sorte qu'un second Mac ne peut pas prendre le même projet tant qu'il n'a pas été rendu. Un bouton <em>Libérer</em> efface à la main une trace périmée.",
+           "zh": "取走專案時，會在共用封存區的原位置留下紀錄——哪台 Mac 取走、何時取走——因此在歸還之前，第二台 Mac 無法取走同一個專案。<em>釋放</em>按鈕可手動清除過期的紀錄。"}},
+    {"h": {"en": "One index, both roots", "fr": "Un index, deux racines", "zh": "一份索引，涵蓋兩個根目錄"},
+     "p": {"en": "Generates a unified <code>INDEX.md</code> covering archive and active side by side — category folder, detected stack, disk size, and the description read from each project's README — and writes an identical copy into both roots.",
+           "fr": "Génère un <code>INDEX.md</code> unifié couvrant archive et actif côte à côte — dossier de catégorie, stack détectée, taille sur disque et description lue dans le README de chaque projet — et en écrit une copie identique dans les deux racines.",
+           "zh": "產生一份統一的 <code>INDEX.md</code>，並列封存區與工作區——分類資料夾、偵測到的技術堆疊、磁碟大小，以及從各專案 README 讀取的說明——並在兩個根目錄各寫入一份相同的副本。"}},
+    {"h": {"en": "Menu bar &amp; main window", "fr": "Barre des menus et fenêtre principale", "zh": "選單列與主視窗"},
+     "p": {"en": "A menu bar dashboard for quick transfers, plus a window with two hierarchical lists: collapsible folders, ⌘/⇧ multi-select, search, and per-root counters and disk usage.",
+           "fr": "Un tableau de bord dans la barre des menus pour les transferts rapides, plus une fenêtre avec deux listes hiérarchiques : dossiers repliables, sélection multiple ⌘/⇧, recherche, et compteurs et occupation disque par racine.",
+           "zh": "選單列儀表板可快速傳輸，另有一個含兩份階層清單的視窗：可收合的資料夾、⌘/⇧ 多選、搜尋，以及各根目錄的計數與磁碟用量。"}}
+  ],
+  "chapters": [
+    {
+      "id": "roots",
+      "h": {"en": "Archive and active", "fr": "Archive et actif", "zh": "封存區與工作區"},
+      "blocks": [
+        {"type": "specs", "items": [
+          {"h": {"en": "Archive — <code>~/Documents/GitHub</code>", "fr": "Archive — <code>~/Documents/GitHub</code>", "zh": "封存區 — <code>~/Documents/GitHub</code>"},
+           "p": {"en": "On iCloud Drive. Synced across your Macs, slow for file operations, right for projects you are not touching at the moment.",
+                 "fr": "Sur iCloud Drive. Synchronisé entre vos Mac, lent pour les opérations sur fichiers, adapté aux projets auxquels vous ne touchez pas en ce moment.",
+                 "zh": "位於 iCloud Drive。在你的多台 Mac 之間同步，檔案操作較慢，適合目前沒有在動的專案。"}},
+          {"h": {"en": "Active — <code>~/DevApps</code>", "fr": "Actif — <code>~/DevApps</code>", "zh": "工作區 — <code>~/DevApps</code>"},
+           "p": {"en": "A plain local directory. Nothing intercepts your writes, so git, builds and package managers behave normally.",
+                 "fr": "Un simple répertoire local. Rien n'intercepte vos écritures, donc git, les builds et les gestionnaires de paquets se comportent normalement.",
+                 "zh": "一個普通的本機目錄。沒有任何東西攔截你的寫入，因此 git、建置與套件管理工具都能正常運作。"}}
+        ]}
+      ]
+    },
+    {
+      "id": "transfer",
+      "h": {"en": "How a transfer actually works", "fr": "Comment un transfert fonctionne vraiment", "zh": "傳輸實際上如何運作"},
+      "blocks": [
+        {"type": "steps", "items": [
+          {"en": "<b>Everything is downloaded first.</b> iCloud Drive keeps evicted files around as placeholders. MoveApps forces the whole project to be materialized locally before anything moves, so nothing is silently lost on the way.",
+           "fr": "<b>Tout est téléchargé d'abord.</b> iCloud Drive conserve les fichiers évincés sous forme de paramètres fictifs. MoveApps force la matérialisation locale du projet entier avant tout déplacement, pour que rien ne se perde en silence en chemin.",
+           "zh": "<b>先把所有東西下載下來。</b>iCloud Drive 會把已移出本機的檔案留成佔位檔。MoveApps 會在任何搬移之前，強制把整個專案下載到本機，確保途中不會無聲地遺失任何東西。"},
+          {"en": "<b>The move survives iCloud's FileProvider.</b> A native <code>mv</code> between the two roots can fail with <em>Operation timed out</em> even though both live on the same volume. MoveApps then copies, verifies the file count, and deletes the source only once the copy is confirmed complete.",
+           "fr": "<b>Le déplacement résiste au FileProvider d'iCloud.</b> Un <code>mv</code> natif entre les deux racines peut échouer avec <em>Operation timed out</em> alors même que les deux sont sur le même volume. MoveApps copie alors, vérifie le nombre de fichiers et ne supprime la source qu'une fois la copie confirmée complète.",
+           "zh": "<b>搬移撐得過 iCloud 的 FileProvider。</b>兩個根目錄之間的原生 <code>mv</code> 可能以 <em>Operation timed out</em> 失敗，即使兩者位於同一個磁碟區。此時 MoveApps 會複製、核對檔案數量，並只在確認複製完整後才刪除來源。"},
+          {"en": "<b>The project is put back together.</b> Stack-specific fixups run at the destination — virtualenvs rebuilt, git state checked before and after, leftover references to the old path and broken symlinks reported.",
+           "fr": "<b>Le projet est remis en état.</b> Des correctifs propres à chaque stack s'exécutent à destination — virtualenvs reconstruits, état git vérifié avant et après, références résiduelles à l'ancien chemin et liens symboliques cassés signalés.",
+           "zh": "<b>專案會被重新組裝好。</b>目的地會執行針對技術堆疊的修正——重建 virtualenv、前後檢查 git 狀態，並回報殘留的舊路徑參照與失效的符號連結。"},
+          {"en": "<b>You can watch it happen.</b> A dedicated Debug window traces each step of a transfer live, including a single self-updating line for the iCloud download (files fetched, elapsed time, budget) — useful when a large project is taking its time.",
+           "fr": "<b>Vous pouvez le regarder se faire.</b> Une fenêtre Debug dédiée trace chaque étape d'un transfert en direct, avec une ligne unique qui se met à jour pour le téléchargement iCloud (fichiers récupérés, temps écoulé, budget) — utile quand un gros projet prend son temps.",
+           "zh": "<b>你可以看著它進行。</b>專屬的 Debug 視窗會即時追蹤傳輸的每一步，包括一行自動更新的 iCloud 下載狀態（已取得檔案、經過時間、時間預算）——大型專案慢慢來時很實用。"}
+        ]},
+        {"type": "p", "t": {
+          "en": "One exception: the top-level <code>Templates</code> folder holds shared scripts referenced by relative path from both roots, so a transfer <b>copies</b> it instead of moving it, and never places a lock on it.",
+          "fr": "Une exception : le dossier <code>Templates</code> de premier niveau contient des scripts partagés référencés par chemin relatif depuis les deux racines ; un transfert le <b>copie</b> donc au lieu de le déplacer, et ne pose jamais de verrou dessus.",
+          "zh": "唯一的例外：最上層的 <code>Templates</code> 資料夾存放兩個根目錄都以相對路徑參照的共用腳本，因此傳輸會<b>複製</b>它而不是搬移，也從不對它上鎖。"}}
+      ]
+    },
+    {
+      "id": "install",
+      "h": {"en": "Install", "fr": "Installation", "zh": "安裝"},
+      "blocks": [
+        {"type": "steps", "items": [
+          {"en": "<b>Download the DMG</b> from the <a href=\"https://github.com/vincentlauriat/MoveApps/releases/latest\">latest release</a>.",
+           "fr": "<b>Téléchargez le DMG</b> depuis la <a href=\"https://github.com/vincentlauriat/MoveApps/releases/latest\">dernière release</a>.",
+           "zh": "從<a href=\"https://github.com/vincentlauriat/MoveApps/releases/latest\">最新版本</a><b>下載 DMG</b>。"},
+          {"en": "<b>Drag <code>MoveApps.app</code> into Applications.</b>",
+           "fr": "<b>Glissez <code>MoveApps.app</code> dans Applications.</b>",
+           "zh": "<b>把 <code>MoveApps.app</code> 拖進「應用程式」。</b>"},
+          {"en": "<b>Launch it.</b> The app is Developer ID signed and notarized by Apple, so it opens normally — no right-click &rarr; Open dance to get past Gatekeeper.",
+           "fr": "<b>Lancez-la.</b> L'app est signée Developer ID et notariée par Apple, elle s'ouvre donc normalement — pas de clic droit &rarr; Ouvrir pour passer Gatekeeper.",
+           "zh": "<b>啟動它。</b>此 App 以 Developer ID 簽章並經 Apple 公證，因此能正常開啟——不必用右鍵 &rarr; 打開來繞過 Gatekeeper。"}
+        ]},
+        {"type": "p", "t": {
+          "en": "Requires <b>macOS 26.0 or later</b>. After the first install, MoveApps checks for new versions at launch through Sparkle and offers them to you — it never installs anything without your confirmation.",
+          "fr": "Nécessite <b>macOS 26.0 ou ultérieur</b>. Après la première installation, MoveApps vérifie les nouvelles versions au lancement via Sparkle et vous les propose — il n'installe jamais rien sans votre confirmation.",
+          "zh": "需要 <b>macOS 26.0 或更新版本</b>。首次安裝後，MoveApps 會在啟動時透過 Sparkle 檢查新版本並提供給你——未經你確認，絕不會安裝任何東西。"}},
+        {"type": "p", "t": {"en": "Prefer to build it yourself:", "fr": "Vous préférez la compiler vous-même :", "zh": "想自己建置："}},
+        {"type": "pre", "code": "brew install xcodegen\ngit clone https://github.com/vincentlauriat/MoveApps.git\ncd MoveApps\nxcodegen generate\nopen MoveApps.xcodeproj   # then ⌘R"},
+        {"type": "p", "t": {
+          "en": "The design is written up in <a href=\"https://github.com/vincentlauriat/MoveApps/blob/main/ARCHITECTURE_EN.md\">ARCHITECTURE_EN.md</a>, and day-to-day usage in the <a href=\"https://github.com/vincentlauriat/MoveApps/blob/main/USER_GUIDE.md\">user guide</a>. A legacy shell script, <code>move-app.sh</code>, remains in the repo as a CLI fallback but is no longer actively maintained.",
+          "fr": "La conception est décrite dans <a href=\"https://github.com/vincentlauriat/MoveApps/blob/main/ARCHITECTURE_EN.md\">ARCHITECTURE_EN.md</a>, et l'usage au quotidien dans le <a href=\"https://github.com/vincentlauriat/MoveApps/blob/main/USER_GUIDE.md\">guide utilisateur</a>. Un ancien script shell, <code>move-app.sh</code>, reste dans le dépôt comme solution de repli en ligne de commande, mais n'est plus activement maintenu.",
+          "zh": "設計說明寫在 <a href=\"https://github.com/vincentlauriat/MoveApps/blob/main/ARCHITECTURE_EN.md\">ARCHITECTURE_EN.md</a>，日常使用方式則在<a href=\"https://github.com/vincentlauriat/MoveApps/blob/main/USER_GUIDE.md\">使用者指南</a>。舊的 shell 腳本 <code>move-app.sh</code> 仍留在儲存庫中作為命令列備援，但已不再積極維護。"}}
+      ]
+    }
+  ],
+  "close": {
+    "h": {"en": "Download MoveApps", "fr": "Télécharger MoveApps", "zh": "下載 MoveApps"},
+    "p": {"en": "Free &amp; open source (MIT) · macOS 26+ · signed &amp; notarized DMG · Sparkle auto-updates",
+          "fr": "Gratuit et open source (MIT) · macOS 26+ · DMG signé et notarié · mises à jour automatiques Sparkle",
+          "zh": "免費開源（MIT）· macOS 26+ · 已簽章與公證的 DMG · Sparkle 自動更新"},
+    "actions": [
+      {"primary": true, "href": "https://github.com/vincentlauriat/MoveApps/releases/latest",
+       "label": {"en": "Download for macOS", "fr": "Télécharger pour macOS", "zh": "下載 macOS 版"}},
+      {"href": "https://github.com/vincentlauriat/MoveApps",
+       "label": {"en": "View on GitHub", "fr": "Voir sur GitHub", "zh": "在 GitHub 上檢視"}}
+    ]
+  }
+}

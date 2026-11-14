@@ -152,7 +152,7 @@ fi
 
 echo "→ Submitting $DMG to Apple notary service (this takes 2–5 min)"
 notary_run "$NOTARY_PROFILE" submit "$DMG" \
- --wait
+  --wait
 
 echo "→ Stapling notarization ticket to the DMG"
 xcrun stapler staple "$DMG"
